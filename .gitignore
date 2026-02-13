@@ -1,0 +1,18 @@
+# IDE
+.idea/
+
+# Python & Environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Data
+data/
+
+# Security
+.env
