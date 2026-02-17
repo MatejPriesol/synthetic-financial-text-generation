@@ -60,6 +60,14 @@ def load_fire_data(filepath):
 
     return all_samples
 
+
+def load_relations(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        raw_data = json.load(f)
+
+    return list(raw_data['relations'].keys())
+
+
 if __name__ == "__main__":
     path = "../data/01_raw/fire_train.json"
     try:
@@ -67,5 +75,11 @@ if __name__ == "__main__":
         print(f"Successfully loaded {len(data)} samples.")
         print(f"Sample 2: {data[1].sentence}")
         print(f"Sample 2: {data[1].triplets}")
+    except FileNotFoundError:
+        print("File not found")
+
+    path = "../data/01_raw/fire_types.json"
+    try:
+        data = load_relations(path)
     except FileNotFoundError:
         print("File not found")

@@ -1,6 +1,9 @@
 import os
+import json
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from src.generators.prompt_templates import PromptTemplates
 
 load_dotenv()
 
@@ -27,3 +30,22 @@ class GroqClient:
             print("Connection Successful!")
         except Exception as e:
             print(f"Connection Failed: {e}")
+
+
+    def generate_message(self, prompt_part1, prompt_part2):
+
+        full_user_msg = f"{prompt_part1}\n\n{prompt_part2}"
+
+        payload = [
+            {"role": "system", "content": PromptTemplates.get_system_prompt()},
+            {"role": "user", "content": full_user_msg}
+        ]
+
+        try:
+            response = self.client.chat.completions.create(
+                messages=payload,
+                model=self.model
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error generating message: {e}"
