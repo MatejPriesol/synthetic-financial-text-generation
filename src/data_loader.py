@@ -5,12 +5,12 @@ from typing import List
 
 @dataclass
 class Triplet:
-    object: str
-    relation: str
     subject: str
+    relation: str
+    object: str
 
-    object_type: str
     subject_type: str
+    object_type: str
 
 @dataclass
 class FireSample:
@@ -34,16 +34,16 @@ def load_fire_data(filepath):
 
         for relation in item.get('relations', []):
             try:
-                obj = entities[relation['head']]
-                subj = entities[relation['tail']]
+                subj = entities[relation['head']]
+                obj = entities[relation['tail']]
 
                 triplet = Triplet(
-                    object=obj['text'],
-                    relation=relation['type'],
                     subject=subj['text'],
+                    relation=relation['type'],
+                    object=obj['text'],
 
-                    object_type=obj['type'],
                     subject_type=subj['type'],
+                    object_type=obj['type'],
                 )
 
                 extracted_triples.append(triplet)
