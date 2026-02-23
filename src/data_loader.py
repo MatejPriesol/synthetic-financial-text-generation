@@ -19,7 +19,6 @@ class FireSample:
     triplets: List[Triplet]
 
 def load_fire_data(filepath):
-
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
 
@@ -60,26 +59,43 @@ def load_fire_data(filepath):
 
     return all_samples
 
-
-def load_relations(filepath):
+def load_fire_relations(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
 
     return list(raw_data['relations'].keys())
 
+def load_processed_fire_data(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        raw_data = json.load(f)
+
+    # Convert to Triplet objects
+    samples = []
+    for item in raw_data:
+        triplets = [Triplet(**t) for t in item['triplets']]
+        samples.append(FireSample(id=item['id'], sentence=item['sentence'], triplets=triplets))
+
+    return samples
+
+def load_processed_fire_relations(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        relations = json.load(f)
+
+    return relations
+
+
+def main():
+    print('Loading data...')
+    data_path = "data/02_processed/fire_train_processed.json"
+    relations_path = "data/02_processed/fire_types_processed.json"
+
+    data = load_processed_fire_data(data_path)
+    relations = load_processed_fire_relations(relations_path)
+
+    print(relations)
+    print(f"Sample 2: {data[1].sentence}")
+    print(f"Sample 2: {data[1].triplets}")
+
 
 if __name__ == "__main__":
-    path = "../data/01_raw/fire_train.json"
-    try:
-        data = load_fire_data(path)
-        print(f"Successfully loaded {len(data)} samples.")
-        print(f"Sample 2: {data[1].sentence}")
-        print(f"Sample 2: {data[1].triplets}")
-    except FileNotFoundError:
-        print("File not found")
-
-    path = "../data/01_raw/fire_types.json"
-    try:
-        data = load_relations(path)
-    except FileNotFoundError:
-        print("File not found")
+    main()

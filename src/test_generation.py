@@ -1,6 +1,6 @@
 from src.generators.llm_client import GroqClient
 from src.generators.prompt_templates import PromptTemplates
-from src.data_loader import load_fire_data, load_relations
+from src.data_loader import load_fire_data, load_fire_relations
 
 import random
 
@@ -17,7 +17,7 @@ def main():
 
     print("Loading data")
     data = load_fire_data(data_path)
-    relations = load_relations(relations_path)
+    relations = load_fire_relations(relations_path)
     print(f"Loaded {len(data)} data samples and {len(relations)} relations")
 
     print("\n--------------------")
@@ -44,8 +44,6 @@ def main():
 
     print("RESPONSE:")
     print(response)
-
-
 
 
 if __name__ == "__main__":
