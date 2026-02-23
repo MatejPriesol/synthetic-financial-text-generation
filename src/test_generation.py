@@ -2,6 +2,8 @@ from src.generators.llm_client import GroqClient
 from src.generators.prompt_templates import PromptTemplates
 from src.data_loader import load_fire_data, load_relations
 
+import random
+
 
 def test_connection():
     client = GroqClient()
@@ -22,12 +24,29 @@ def main():
     print("Running zero-shot test")
 
     rules = PromptTemplates.zero_shot(relations)
-    task = PromptTemplates.five_unique_sentences()
+    task = PromptTemplates.generate_n_sentences(5)
+
+    #response = client.generate_message(rules, task)
+
+    #print("Here's the response:")
+    #print(response)
+
+    print("\n--------------------")
+    print("Running few-shot test")
+
+    n = 2
+    examples = random.sample(data, n)
+
+    rules = PromptTemplates.few_shot(relations, examples)
+    task = PromptTemplates.generate_n_sentences(5)
 
     response = client.generate_message(rules, task)
 
-    print("Here's the response:")
+    print("RESPONSE:")
     print(response)
+
+
+
 
 if __name__ == "__main__":
     main()

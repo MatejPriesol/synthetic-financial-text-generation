@@ -41,6 +41,8 @@ class GroqClient:
             {"role": "user", "content": full_user_msg}
         ]
 
+        self.print_payload(payload)
+
         try:
             response = self.client.chat.completions.create(
                 messages=payload,
@@ -49,3 +51,11 @@ class GroqClient:
             return response.choices[0].message.content
         except Exception as e:
             return f"Error generating message: {e}"
+
+
+    def print_payload(self, payload):
+        print("\n=== DEBUG: EXACT PAYLOAD SENT TO LLM ===")
+        for message in payload:
+            print(f"\n[{message['role'].upper()}]")
+            print(message['content'])
+        print("========================================\n")
