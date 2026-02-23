@@ -10,12 +10,12 @@ class Triplet:
     relation: str
     object: str
 
-    subject_type: str
-    object_type: str
+    subject_type: str = None
+    object_type: str = None
 
 @dataclass
 class FireSample:
-    id: int
+    id: int | str
     sentence: str
     triplets: List[Triplet]
 
@@ -84,6 +84,23 @@ def load_processed_fire_relations(filepath):
 
     return relations
 
+def load_synthetic_fire_data(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        raw_data = json.load(f)
+
+    examples = []
+
+    for i, item in enumerate(raw_data):
+        triplets = [Triplet(**t) for t in item.get('triplets', [])]
+
+        example = FireSample(
+            id=f"synth_{i}",
+            sentence=item.get('text', ''),
+            triplets=triplets
+        )
+        examples.append(example)
+
+    return examples
 
 def main():
     print('Loading data...')
