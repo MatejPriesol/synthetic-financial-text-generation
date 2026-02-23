@@ -1,8 +1,13 @@
+import random
+import os
+import json
+import time
+
+from tqdm import tqdm
+
 from src.generators.llm_client import GroqClient
 from src.generators.prompt_templates import PromptTemplates
-from src.data_loader import load_fire_data, load_fire_relations
-
-import random
+from src.data_loader import load_fire_data, load_fire_relations, load_processed_fire_data, load_processed_fire_relations
 
 
 def test_connection():
@@ -12,39 +17,50 @@ def test_connection():
 def main():
     client = GroqClient()
 
-    data_path = "data/01_raw/fire_train.json"
-    relations_path = "data/01_raw/fire_types.json"
+    data_path = "data/02_processed/fire_train_processed.json"
+    relations_path = "data/02_processed/fire_types_processed.json"
 
-    print("Loading data")
-    data = load_fire_data(data_path)
-    relations = load_fire_relations(relations_path)
+    output_dir = "data/03_synthetic"
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, "few_shot_100_examples.json")
+
+
+    print("Loading data..")
+    data = load_processed_fire_data(data_path)
+    relations = load_processed_fire_relations(relations_path)
     print(f"Loaded {len(data)} data samples and {len(relations)} relations")
 
     print("\n--------------------")
-    print("Running zero-shot test")
+    print("Starting batch generation")
 
-    rules = PromptTemplates.zero_shot(relations)
-    task = PromptTemplates.generate_n_sentences(5)
+    num_of_examples = 2
+    num_of_batches = 10
+    sentence_per_batch = 10
 
-    #response = client.generate_message(rules, task)
+    task = PromptTemplates.generate_n_sentences(sentence_per_batch)
 
-    #print("Here's the response:")
-    #print(response)
+    all_generated_sentences = []
 
-    print("\n--------------------")
-    print("Running few-shot test")
+    for i in tqdm(range(num_of_batches)):
+        examples = random.sample(data, num_of_examples)
+        rules = PromptTemplates.few_shot(relations, examples)
 
-    n = 2
-    examples = random.sample(data, n)
+        response = client.generate_message(rules, task)
 
-    rules = PromptTemplates.few_shot(relations, examples)
-    task = PromptTemplates.generate_n_sentences(5)
+        try:
+            batch_data = json.loads(response)
+            all_generated_sentences.extend(batch_data)
+        except json.JSONDecodeError as e:
+            print(f"  -> Failed to parse JSON for this batch. Raw output:\n{response}")
 
-    response = client.generate_message(rules, task)
+        time.sleep(2)
 
-    print("RESPONSE:")
-    print(response)
+    print(f"\nGeneration complete! Saving {len(all_generated_sentences)} sentences")
 
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(all_generated_sentences, f, indent=4)
+
+    print(f"Success! Data saved to {output_file}")
 
 if __name__ == "__main__":
     main()

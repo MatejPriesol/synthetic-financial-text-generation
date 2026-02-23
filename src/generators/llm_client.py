@@ -41,7 +41,7 @@ class GroqClient:
             {"role": "user", "content": full_user_msg}
         ]
 
-        self.print_payload(payload)
+        #self.print_payload(payload)
 
         try:
             response = self.client.chat.completions.create(

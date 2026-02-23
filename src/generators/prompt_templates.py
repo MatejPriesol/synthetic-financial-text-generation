@@ -10,7 +10,8 @@ class PromptTemplates:
         Important instructions:
         1) You will be given a list of allowed relations. You must use a relation from the list, do NOT generate your own.
         2) Do NOT include any explanation or additional text, only the generated sentence and triplets.
-        3) You MUST return a valid JSON array of the following format:
+        3) Do NOT use literal newlines or line breaks inside string values. Keep all text on a single line.
+        4) You MUST return a valid JSON array of the following format:
         [
           {
             "text": "The generated financial news sentence.",
