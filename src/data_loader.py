@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List
 
 
@@ -86,8 +87,8 @@ def load_processed_fire_relations(filepath):
 
 def main():
     print('Loading data...')
-    data_path = "data/02_processed/fire_train_processed.json"
-    relations_path = "data/02_processed/fire_types_processed.json"
+    data_path = Path("data") / "02_processed" / "fire_train_processed.json"
+    relations_path = Path("data") / "02_processed" / "fire_types_processed.json"
 
     data = load_processed_fire_data(data_path)
     relations = load_processed_fire_relations(relations_path)

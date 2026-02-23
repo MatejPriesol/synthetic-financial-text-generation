@@ -1,17 +1,17 @@
 import json
-import os
+from pathlib import Path
 from dataclasses import asdict
 from src.data_loader import load_fire_data, load_fire_relations
 
 
 def main():
-    raw_path_data = "data/01_raw/fire_train.json"
-    raw_path_relations = "data/01_raw/fire_types.json"
+    raw_path_data = Path("data") / "01_raw" / "fire_train.json"
+    raw_path_relations = Path("data") / "01_raw" / "fire_types.json"
 
-    processed_dir = "data/02_processed"
-    os.makedirs(processed_dir, exist_ok=True)
-    output_path_data = os.path.join(processed_dir, "fire_train_processed.json")
-    output_path_relations = os.path.join(processed_dir, "fire_types_processed.json")
+    processed_dir = Path("data") / "02_processed"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    output_path_data = processed_dir / "fire_train_processed.json"
+    output_path_relations = processed_dir / "fire_types_processed.json"
 
     print("Loading and parsing raw FIRE data")
     processed_data = load_fire_data(raw_path_data)

@@ -1,9 +1,9 @@
 import random
-import os
 import json
 import time
 
 from tqdm import tqdm
+from pathlib import Path
 
 from src.generators.llm_client import GroqClient
 from src.generators.prompt_templates import PromptTemplates
@@ -17,12 +17,12 @@ def test_connection():
 def main():
     client = GroqClient()
 
-    data_path = "data/02_processed/fire_train_processed.json"
-    relations_path = "data/02_processed/fire_types_processed.json"
+    data_path = Path("data") / "02_processed" / "fire_train_processed.json"
+    relations_path = Path("data") / "02_processed" / "fire_types_processed.json"
 
-    output_dir = "data/03_synthetic"
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, "few_shot_100_examples.json")
+    output_dir = Path("data") / "03_synthetic"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / "few_shot_100_examples.json"
 
 
     print("Loading data..")
