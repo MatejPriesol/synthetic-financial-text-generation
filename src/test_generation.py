@@ -22,7 +22,7 @@ def main():
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "few_shot_100_examples.json"
+    output_file = output_dir / "few_shot_650_samples_4_examples.json"
 
 
     print("Loading data..")
@@ -33,8 +33,8 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_examples = 2
-    num_of_batches = 10
+    num_of_examples = 4
+    num_of_batches = 100
     sentence_per_batch = 10
 
     task = PromptTemplates.generate_n_sentences(sentence_per_batch)
