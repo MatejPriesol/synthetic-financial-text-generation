@@ -1,3 +1,4 @@
+import torch
 import nltk
 from nltk.util import ngrams
 
@@ -36,8 +37,10 @@ def evaluate_ngrams_words(sentences, n=3, top_k=10):
 
 
 def evaluate_semantic_similarity(sentences):
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using {device.upper()}")
 
-    model = SentenceTransformer("all-MiniLM-L6-v2")
+    model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
     embeddings = model.encode(sentences, convert_to_tensor=True)
     scores = util.cos_sim(embeddings, embeddings)
 
