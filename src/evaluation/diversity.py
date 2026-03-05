@@ -5,7 +5,7 @@ from nltk.util import ngrams
 from sentence_transformers import SentenceTransformer, util
 from collections import Counter
 from pathlib import Path
-from src.data_loader import load_synthetic_fire_data
+from src.data_loader import load_synthetic_fire_data, load_processed_fire_data
 
 def evaluate_ngrams_words(sentences, n=3, top_k=10):
 
@@ -74,7 +74,7 @@ def evaluate_semantic_similarity(sentences):
     for pair in pairs:
         score = pair['score']
 
-        if score >= 0.98:
+        if score >= 0.9:
             iterated += 1
             continue
 
@@ -89,6 +89,8 @@ def evaluate_semantic_similarity(sentences):
 
     print(f"Iterated over {iterated+count} pairs:")
 
+    print(f"Percentage of sentences with score >= 0.9: {100*iterated/len(pairs):.5f}%")
+
     return scores
 
 
@@ -98,7 +100,12 @@ def main():
     #synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_100_examples.json"
     synthetic_data = load_synthetic_fire_data(synthetic_data_path)
 
+    fire_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
+    fire_data = load_processed_fire_data(fire_data_path)
+
     sentences = [sample.sentence for sample in synthetic_data]
+    #sentences = [sample.sentence for sample in fire_data]
+
     #evaluate_ngrams_words(sentences, n=3)
     evaluate_semantic_similarity(sentences)
 
