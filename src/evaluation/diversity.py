@@ -5,7 +5,8 @@ from nltk.util import ngrams
 from sentence_transformers import SentenceTransformer, util
 from collections import Counter
 from pathlib import Path
-from src.data_loader import load_synthetic_fire_data, load_processed_fire_data
+from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data
+
 
 def evaluate_ngrams_words(sentences, n=3, top_k=10):
 
@@ -103,8 +104,12 @@ def main():
     fire_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
     fire_data = load_processed_fire_data(fire_data_path)
 
-    sentences = [sample.sentence for sample in synthetic_data]
+    elekta_data_path = Path("data") / "02_processed" / "elekta_processed.json"
+    elekta_data = load_processed_markdown_data(elekta_data_path)
+
+    #sentences = [sample.sentence for sample in synthetic_data]
     #sentences = [sample.sentence for sample in fire_data]
+    sentences = [sample.sentence for sample in elekta_data]
 
     #evaluate_ngrams_words(sentences, n=3)
     evaluate_semantic_similarity(sentences)

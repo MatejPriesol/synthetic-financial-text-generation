@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.data_loader import load_synthetic_fire_data, load_processed_fire_data
+from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data
 
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
@@ -74,8 +74,12 @@ def main():
     fire_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
     fire_data = load_processed_fire_data(fire_data_path)
 
+    elekta_data_path = Path("data") / "02_processed" / "elekta_processed.json"
+    elekta_data = load_processed_markdown_data(elekta_data_path)
+
     #sentences = [sample.sentence for sample in synthetic_data]
-    sentences = [sample.sentence for sample in fire_data]
+    #sentences = [sample.sentence for sample in fire_data]
+    sentences = [sample.sentence for sample in elekta_data]
 
     evaluate_perplexity(sentences)
 

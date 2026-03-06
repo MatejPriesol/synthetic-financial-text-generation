@@ -1,4 +1,10 @@
 import json
+import re
+import nltk
+
+from bs4 import BeautifulSoup
+from markdown_it import MarkdownIt
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
@@ -14,7 +20,7 @@ class Triplet:
     object_type: str = None
 
 @dataclass
-class FireSample:
+class SentenceSample:
     id: int | str
     sentence: str
     triplets: List[Triplet]
@@ -51,7 +57,7 @@ def load_fire_data(filepath):
                 print(f'KeyError: {relation}')
                 continue
 
-        sample = FireSample(
+        sample = SentenceSample(
             id=item.get('orig_id', -1),
             sentence=sentence,
             triplets=extracted_triples
@@ -74,7 +80,7 @@ def load_processed_fire_data(filepath):
     samples = []
     for item in raw_data:
         triplets = [Triplet(**t) for t in item['triplets']]
-        samples.append(FireSample(id=item['id'], sentence=item['sentence'], triplets=triplets))
+        samples.append(SentenceSample(id=item['id'], sentence=item['sentence'], triplets=triplets))
 
     return samples
 
@@ -93,7 +99,7 @@ def load_synthetic_fire_data(filepath):
     for i, item in enumerate(raw_data):
         triplets = [Triplet(**t) for t in item.get('triplets', [])]
 
-        example = FireSample(
+        example = SentenceSample(
             id=f"synth_{i}",
             sentence=item.get('text', ''),
             triplets=triplets
@@ -101,6 +107,72 @@ def load_synthetic_fire_data(filepath):
         examples.append(example)
 
     return examples
+
+def load_markdown_data(filepath, name):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        raw_text = f.read()
+
+    # Remove tables (_START_OF_TABLE_ ..... _END_OF_TABLE_)
+    raw_text = re.sub(r'_START_OF_TABLE_.*?_END_OF_TABLE_', '', raw_text, flags=re.DOTALL)
+
+    md = MarkdownIt("commonmark")
+    html_content = md.render(raw_text)
+
+    # Extract paragraphs
+    soup = BeautifulSoup(html_content, 'html.parser')
+    paragraph_tags = soup.find_all('p')
+
+    samples = []
+    counter = 0
+
+    for p in paragraph_tags:
+        text = p.get_text()
+
+        text = re.sub(r'-\s+', '', text)  # Fix word splits (ser- vices -> services)
+        text = re.sub(r'([a-zA-Z])\d+\b', r'\1', text)  # Remove inline refs (emissions4 -> emissions)
+        text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
+
+        sentences = nltk.sent_tokenize(text)
+
+        for s in sentences:
+            s = s.strip()
+
+            # Skip some weird parsing errors and format issues
+            if len(s.split()) < 5:  # Skip short sentences
+                continue
+            if not (s[0].isupper() or s[0].isdigit()):  # Skip if it starts with weird symbol
+                continue
+            if s[-1] not in ".!?":
+                continue
+
+            # Create the SentenceSample object
+            sample = SentenceSample(
+                id=f"{name}_{counter}",
+                sentence=s,
+                triplets=[]  # No triplets here
+            )
+            samples.append(sample)
+            counter += 1
+
+    return samples
+
+
+def load_processed_markdown_data(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        raw_data = json.load(f)
+
+    samples = []
+    for item in raw_data:
+        triplets = [Triplet(**t) for t in item.get('triplets', [])]
+
+        # Rebuild the SentenceSample
+        samples.append(SentenceSample(
+            id=item['id'],
+            sentence=item['sentence'],
+            triplets=triplets
+        ))
+
+    return samples
 
 def main():
     print('Loading data...')
