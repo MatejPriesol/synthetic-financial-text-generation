@@ -1,10 +1,9 @@
 from pathlib import Path
-from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data
+from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data, load_rebel_sample
 
 import torch
 from transformers import pipeline
 import numpy as np
-
 
 def evaluate_grammatical_correctness(sentences):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -13,30 +12,27 @@ def evaluate_grammatical_correctness(sentences):
     grammar_checker = pipeline(
         "text-classification",
         model="textattack/roberta-base-CoLA",
-        device=device
+        device=device,
+        batch_size=32
     )
 
     scored_sentences = []
+    results = grammar_checker(
+        sentences,
+        truncation=True,
+        max_length=512
+    )
 
-    batch_size = 32
+    for sentence, res in zip(sentences, results):
 
-    for i in range(0, len(sentences), batch_size):
-        batch = sentences[i:i + batch_size]
+        is_acceptable = True if res['label'] == 'LABEL_1' else False
+        score = res['score']
 
-        batch = [s for s in batch if len(s) < 512]    # TODO: for now temporary fix for long sentences
-
-        results = grammar_checker(batch)
-
-        for sentence, res in zip(batch, results):
-
-            is_acceptable = True if res['label'] == 'LABEL_1' else False
-            score = res['score']
-
-            scored_sentences.append({
-                'sentence': sentence,
-                'grammatically correct': is_acceptable,
-                'score': score if is_acceptable else (1.0 - score)    # Since score is the confidence, invert for ungrammatical sentences
-            })
+        scored_sentences.append({
+            'sentence': sentence,
+            'grammatically correct': is_acceptable,
+            'score': score if is_acceptable else (1.0 - score)    # Since score is the confidence, invert for ungrammatical sentences
+        })
 
     # Sort the list from worst to best
     scored_sentences.sort(key=lambda x: x['score'])
@@ -75,10 +71,14 @@ def main():
     vestas_data_path = Path("data") / "02_processed" / "vestas_processed.json"
     vestas_data = load_processed_markdown_data(vestas_data_path)
 
+    rebel_data_path = Path("data") / "02_processed" / "rebel_processed.json"
+    rebel_data = load_rebel_sample(rebel_data_path, size=10000)
+
     #sentences = [sample.sentence for sample in synthetic_data]
     #sentences = [sample.sentence for sample in fire_data]
     #sentences = [sample.sentence for sample in elekta_data]
-    sentences = [sample.sentence for sample in vestas_data]
+    #sentences = [sample.sentence for sample in vestas_data]
+    sentences = [sample.sentence for sample in rebel_data]
 
     evaluate_grammatical_correctness(sentences)
 

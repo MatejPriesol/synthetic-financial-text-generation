@@ -5,7 +5,7 @@ from nltk.util import ngrams
 from sentence_transformers import SentenceTransformer, util
 from collections import Counter
 from pathlib import Path
-from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data
+from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data, load_rebel_sample
 
 
 def evaluate_ngrams_words(sentences, n=3, top_k=10):
@@ -45,41 +45,37 @@ def evaluate_semantic_similarity(sentences):
     embeddings = model.encode(sentences, convert_to_tensor=True)
     scores = util.cos_sim(embeddings, embeddings)
 
-    pairs = []
     num_of_sentences = len(sentences)
 
-    for i in range(num_of_sentences):
-        for j in range(i+1, num_of_sentences):
-            pairs.append({'id': [i, j], 'score': scores[i, j].item()})
+    # Get the row and column indices for the upper triangle (offset skips the diagonal)
+    row_idx, col_idx = torch.triu_indices(num_of_sentences, num_of_sentences, offset=1, device=device)
 
-    pairs = sorted(pairs, key=lambda x: x['score'], reverse=True)
+    # Get the scores
+    pairwise_scores = scores[row_idx, col_idx]
 
-    avg_score = sum(p['score'] for p in pairs) / len(pairs) if pairs else 0
-
+    avg_score = pairwise_scores.mean().item()
     print(f"Average Pairwise Similarity: {avg_score:.3f}\n")
 
-    """
-    print("Most similar sentences:")
-    for i in range(min(10, len(pairs))):
-        idx1, idx2 = pairs[i]['id']
-        score = pairs[i]['score']
-        print(f"Pair {i + 1} - Score: {score:.3f}, idx1: {idx1}, idx2: {idx2}")
-        print(f"  A: {sentences[idx1]}")
-        print(f"  B: {sentences[idx2]}\n")
-    """
+    sorted_scores, sorted_indices = torch.sort(pairwise_scores, descending=True)
 
-    print("Most similar non identical sentences:")
+    sorted_scores_list = sorted_scores.tolist()
+    sorted_rows = row_idx[sorted_indices].tolist()
+    sorted_cols = col_idx[sorted_indices].tolist()
 
+    print("Most similar non-identical sentences:")
     count = 0
     iterated = 0
-    for pair in pairs:
-        score = pair['score']
+
+    for i in range(len(sorted_scores_list)):
+        score = sorted_scores_list[i]
 
         if score >= 0.9:
             iterated += 1
             continue
 
-        idx1, idx2 = pair['id']
+        idx1 = sorted_rows[i]
+        idx2 = sorted_cols[i]
+
         print(f"Pair {count + 1} - Score: {score:.3f}, idx1: {idx1}, idx2: {idx2}")
         print(f"  A: {sentences[idx1]}")
         print(f"  B: {sentences[idx2]}\n")
@@ -88,9 +84,8 @@ def evaluate_semantic_similarity(sentences):
         if count >= 10:
             break
 
-    print(f"Iterated over {iterated+count} pairs:")
-
-    print(f"Percentage of sentences with score >= 0.9: {100*iterated/len(pairs):.5f}%")
+    print(f"Iterated over {iterated + count} pairs.")
+    print(f"Percentage of sentences with score >= 0.9: {100 * iterated / len(sorted_scores_list):.5f}%")
 
     return scores
 
@@ -109,10 +104,14 @@ def main():
     vestas_data_path = Path("data") / "02_processed" / "vestas_processed.json"
     vestas_data = load_processed_markdown_data(vestas_data_path)
 
+    rebel_data_path = Path("data") / "02_processed" / "rebel_processed.json"
+    rebel_data = load_rebel_sample(rebel_data_path, size=10000)
+
     # sentences = [sample.sentence for sample in synthetic_data]
     # sentences = [sample.sentence for sample in fire_data]
     # sentences = [sample.sentence for sample in elekta_data]
-    sentences = [sample.sentence for sample in vestas_data]
+    # sentences = [sample.sentence for sample in vestas_data]
+    sentences = [sample.sentence for sample in rebel_data]
 
     #evaluate_ngrams_words(sentences, n=3)
     evaluate_semantic_similarity(sentences)
