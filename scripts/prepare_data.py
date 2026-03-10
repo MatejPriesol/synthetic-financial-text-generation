@@ -4,7 +4,7 @@ import sys
 
 from pathlib import Path
 from dataclasses import asdict
-from src.data_loader import load_fire_data, load_fire_relations, load_markdown_data
+from src.data_loader import load_fire_data, load_fire_relations, load_markdown_data, load_rebel_data
 
 
 def prepare_fire_data():
@@ -42,15 +42,35 @@ def prepare_fire_relations():
     print(f"Relations saved to {output_path_relations}")
 
 
-def prepare_markdown_data():
-    raw_path_elekta = Path("data") / "01_raw" / "Elekta_Annual_Report_2023.txt"
+def prepare_markdown_data(name, filename):
+    raw_path = Path("data") / "01_raw" / f"{filename}"
 
     processed_dir = Path("data") / "02_processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
-    output_path_data = processed_dir / "elekta_processed.json"
+    output_path_data = processed_dir / f"{name}_processed.json"
 
-    print("Loading and parsing raw Elekta data")
-    processed_data = load_markdown_data(filepath=raw_path_elekta, name="elekta")
+    print(f"Loading and parsing raw {name} data")
+    processed_data = load_markdown_data(filepath=raw_path, name=name)
+
+    # Convert to dict
+    data_to_save = [asdict(sample) for sample in processed_data]
+
+    # Save into file
+    with open(output_path_data, 'w', encoding='utf-8') as f:
+        json.dump(data_to_save, f, indent=4, ensure_ascii=False)
+
+    print(f"Data saved to {output_path_data}")
+
+
+def prepare_rebel_data(name, filename):
+    raw_path = Path("data") / "01_raw" / filename
+
+    processed_dir = Path("data") / "02_processed"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    output_path_data = processed_dir / f"{name}_processed.json"
+
+    print(f"Loading and parsing raw {name} data")
+    processed_data = load_rebel_data(filepath=raw_path, name=name)
 
     # Convert to dict
     data_to_save = [asdict(sample) for sample in processed_data]
@@ -68,7 +88,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data",
         type=str,
-        choices=['fire', 'relations', 'elekta', 'all'],
+        choices=['fire', 'relations', 'elekta', 'vestas', 'rebel', 'all'],
         help="Choose which dataset to process. Please specify --data flag."
     )
 
@@ -85,4 +105,10 @@ if __name__ == "__main__":
         prepare_fire_relations()
 
     if args.data in ['elekta', 'all']:
-        prepare_markdown_data()
+        prepare_markdown_data(name="elekta", filename="Elekta_Annual_Report_2023.txt")
+
+    if args.data in ['vestas', 'all']:
+        prepare_markdown_data(name="vestas", filename="Vestas_Annual_Report_2024.txt")
+
+    if args.data in ['rebel', 'all']:
+        prepare_rebel_data(name="rebel", filename="rebel_val.jsonl")

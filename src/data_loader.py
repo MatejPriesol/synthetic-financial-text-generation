@@ -1,6 +1,7 @@
 import json
 import re
 import nltk
+import random
 
 from bs4 import BeautifulSoup
 from markdown_it import MarkdownIt
@@ -173,6 +174,68 @@ def load_processed_markdown_data(filepath):
         ))
 
     return samples
+
+
+def load_rebel_data(filepath, name="rebel"):
+    samples = []
+    counter = 0
+
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            # Parse the single line as a JSON object
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            # Extract the raw text block
+            text = item.get('text', '')
+            if not text:
+                continue
+
+            # Clean whitespace and split into sentences
+            text = " ".join(text.split())
+            sentences = nltk.sent_tokenize(text)
+
+            # Store as SentenceSample with empty triplets
+            for s in sentences:
+                sample = SentenceSample(
+                    id=f"{name}_{counter}",
+                    sentence=s,
+                    triplets=[]
+                )
+                samples.append(sample)
+                counter += 1
+
+    return samples
+
+
+def load_processed_rebel_data(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        raw_data = json.load(f)
+
+    samples = []
+    for item in raw_data:
+        triplets = [Triplet(**t) for t in item.get('triplets', [])]
+
+        # Rebuild the SentenceSample object
+        samples.append(SentenceSample(
+            id=item['id'],
+            sentence=item['sentence'],
+            triplets=triplets
+        ))
+
+    return samples
+
+
+def load_rebel_sample(filepath, size=10000):
+    samples = load_processed_rebel_data(filepath)
+
+    if size < len(samples):
+        return random.sample(samples, size)
+
+    return samples
+
 
 def main():
     print('Loading data...')

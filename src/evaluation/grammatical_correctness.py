@@ -72,10 +72,13 @@ def main():
 
     elekta_data_path = Path("data") / "02_processed" / "elekta_processed.json"
     elekta_data = load_processed_markdown_data(elekta_data_path)
+    vestas_data_path = Path("data") / "02_processed" / "vestas_processed.json"
+    vestas_data = load_processed_markdown_data(vestas_data_path)
 
     #sentences = [sample.sentence for sample in synthetic_data]
     #sentences = [sample.sentence for sample in fire_data]
-    sentences = [sample.sentence for sample in elekta_data]
+    #sentences = [sample.sentence for sample in elekta_data]
+    sentences = [sample.sentence for sample in vestas_data]
 
     evaluate_grammatical_correctness(sentences)
 
