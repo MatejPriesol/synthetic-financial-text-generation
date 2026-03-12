@@ -1,7 +1,7 @@
 import json
 from collections import Counter
 from pathlib import Path
-from src.data_loader import load_processed_fire_data, load_synthetic_fire_data
+from src.data_loader import load_processed_fire_data, load_synthetic_fire_data, load_processed_markdown_data
 
 
 def evaluate_relation_distribution(original_data, synthetic_data):
@@ -56,16 +56,50 @@ def evaluate_obj_subj(synthetic_data, top_n=10):
     print("\n")
 
 
+def profile_ontology(data, include_types=False, top_n=10):
+    print(f"Profiling Ontology Schema (Include Types: {include_types})\n")
+
+    schema_elements = []
+
+    for sample in data:
+        for t in sample.triplets:
+            if include_types:
+                s_type = getattr(t, 'subject_type', 'UNKNOWN_TYPE')
+                o_type = getattr(t, 'object_type', 'UNKNOWN_TYPE')
+
+                # Format: [Company] --(Value)--> [Money]
+                signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
+                schema_elements.append(signature)
+            else:
+                schema_elements.append(t.relation)
+
+    counts = Counter(schema_elements)
+
+    print(f"{'Count':>5} | {'Triplet'}")
+    print("-" * 60)
+
+    for element, count in counts.most_common(top_n):
+        print(f"{count:>5} | {element}")
+
+    print("\n")
+    return counts
+
+
 
 def main():
     original_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
     synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_650_samples_4_examples.json"
+    elekta_data_path = Path("data") / "02_processed" / "elekta_processed_w_triplets.json"
 
     original_data = load_processed_fire_data(original_data_path)
     synthetic_data = load_synthetic_fire_data(synthetic_data_path)
+    elekta_data = load_processed_markdown_data(elekta_data_path)
 
-    evaluate_relation_distribution(original_data, synthetic_data)
-    evaluate_obj_subj(synthetic_data)
+    #evaluate_relation_distribution(original_data, synthetic_data)
+    #evaluate_obj_subj(synthetic_data)
+
+    counts = profile_ontology(original_data, include_types=True)
+    # counts = profile_ontology(elekta_data, include_types=False)
 
 if __name__ == "__main__":
     main()
