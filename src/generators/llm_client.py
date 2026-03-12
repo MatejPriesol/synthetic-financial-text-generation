@@ -32,16 +32,16 @@ class GroqClient:
             print(f"Connection Failed: {e}")
 
 
-    def generate_message(self, prompt_part1, prompt_part2):
-
-        full_user_msg = f"{prompt_part1}\n\n{prompt_part2}"
+    def generate_message(self, system_prompt, prompt_part1, prompt_part2=None):
+        if prompt_part2:
+            full_user_msg = f"{prompt_part1}\n\n{prompt_part2}"
+        else:
+            full_user_msg = f"{prompt_part1}"
 
         payload = [
-            {"role": "system", "content": PromptTemplates.get_system_prompt()},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": full_user_msg}
         ]
-
-        #self.print_payload(payload)
 
         try:
             response = self.client.chat.completions.create(
@@ -53,7 +53,17 @@ class GroqClient:
             return f"Error generating message: {e}"
 
 
-    def print_payload(self, payload):
+    def print_payload(self, system_prompt, prompt_part1, prompt_part2=None):
+        if prompt_part2:
+            full_user_msg = f"{prompt_part1}\n\n{prompt_part2}"
+        else:
+            full_user_msg = f"{prompt_part1}"
+
+        payload = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": full_user_msg}
+        ]
+
         print("\n=== DEBUG: EXACT PAYLOAD SENT TO LLM ===")
         for message in payload:
             print(f"\n[{message['role'].upper()}]")

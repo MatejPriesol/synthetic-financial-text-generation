@@ -67,11 +67,18 @@ def load_fire_data(filepath):
 
     return all_samples
 
-def load_fire_relations(filepath):
+def load_fire_types(filepath, source):
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
 
-    return list(raw_data['relations'].keys())
+    return list(raw_data[source].keys())
+
+def load_processed_fire_types(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        types = json.load(f)
+
+    return types
+
 
 def load_processed_fire_data(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -84,12 +91,6 @@ def load_processed_fire_data(filepath):
         samples.append(SentenceSample(id=item['id'], sentence=item['sentence'], triplets=triplets))
 
     return samples
-
-def load_processed_fire_relations(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        relations = json.load(f)
-
-    return relations
 
 def load_synthetic_fire_data(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -240,10 +241,10 @@ def load_rebel_sample(filepath, size=10000):
 def main():
     print('Loading data...')
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
-    relations_path = Path("data") / "02_processed" / "fire_types_processed.json"
+    relations_path = Path("data") / "02_processed" / "fire_relation_types_processed.json"
 
     data = load_processed_fire_data(data_path)
-    relations = load_processed_fire_relations(relations_path)
+    relations = load_processed_fire_types(relations_path)
 
     print(relations)
     print(f"Sample 2: {data[1].sentence}")

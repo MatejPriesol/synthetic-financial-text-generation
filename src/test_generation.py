@@ -7,7 +7,7 @@ from pathlib import Path
 
 from src.generators.llm_client import GroqClient
 from src.generators.prompt_templates import PromptTemplates
-from src.data_loader import load_fire_data, load_fire_relations, load_processed_fire_data, load_processed_fire_relations
+from src.data_loader import load_fire_data, load_fire_types, load_processed_fire_data, load_processed_fire_types
 
 
 def test_connection():
@@ -18,7 +18,7 @@ def main():
     client = GroqClient()
 
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
-    relations_path = Path("data") / "02_processed" / "fire_types_processed.json"
+    relations_path = Path("data") / "02_processed" / "fire_relation_types_processed.json"
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -27,7 +27,7 @@ def main():
 
     print("Loading data..")
     data = load_processed_fire_data(data_path)
-    relations = load_processed_fire_relations(relations_path)
+    relations = load_processed_fire_types(relations_path)
     print(f"Loaded {len(data)} data samples and {len(relations)} relations")
 
     print("\n--------------------")
@@ -37,6 +37,7 @@ def main():
     num_of_batches = 100
     sentence_per_batch = 10
 
+    system_prompt = PromptTemplates.get_system_prompt()
     task = PromptTemplates.generate_n_sentences(sentence_per_batch)
 
     all_generated_sentences = []
@@ -45,7 +46,7 @@ def main():
         examples = random.sample(data, num_of_examples)
         rules = PromptTemplates.few_shot(relations, examples)
 
-        response = client.generate_message(rules, task)
+        response = client.generate_message(system_prompt, rules, task)
 
         try:
             batch_data = json.loads(response)

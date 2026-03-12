@@ -4,7 +4,7 @@ import sys
 
 from pathlib import Path
 from dataclasses import asdict
-from src.data_loader import load_fire_data, load_fire_relations, load_markdown_data, load_rebel_data
+from src.data_loader import load_fire_data, load_fire_types, load_markdown_data, load_rebel_data
 
 
 def prepare_fire_data():
@@ -27,19 +27,28 @@ def prepare_fire_data():
     print(f"Data saved to {output_path_data}")
 
 
-def prepare_fire_relations():
-    raw_path_relations = Path("data") / "01_raw" / "fire_types.json"
+def prepare_fire_types():
+    raw_path_types = Path("data") / "01_raw" / "fire_types.json"
 
     processed_dir = Path("data") / "02_processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
-    output_path_relations = processed_dir / "fire_types_processed.json"
+    output_path_relations = processed_dir / "fire_relation_types_processed.json"
 
     print("Loading and parsing FIRE relations")
-    relations = load_fire_relations(raw_path_relations)
+    relations = load_fire_types(raw_path_types, "relations")
 
     with open(output_path_relations, 'w', encoding='utf-8') as f:
         json.dump(relations, f, indent=4)
     print(f"Relations saved to {output_path_relations}")
+
+    output_path_entities = processed_dir / "fire_entity_types_processed.json"
+
+    print("Loading and parsing FIRE entities")
+    entities = load_fire_types(raw_path_types, "entities")
+
+    with open(output_path_entities, 'w', encoding='utf-8') as f:
+        json.dump(entities, f, indent=4)
+    print(f"Entities saved to {output_path_entities}")
 
 
 def prepare_markdown_data(name, filename):
@@ -88,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data",
         type=str,
-        choices=['fire', 'relations', 'elekta', 'vestas', 'rebel', 'all'],
+        choices=['fire', 'types', 'elekta', 'vestas', 'rebel', 'all'],
         help="Choose which dataset to process. Please specify --data flag."
     )
 
@@ -101,8 +110,8 @@ if __name__ == "__main__":
     if args.data in ['fire', 'all']:
         prepare_fire_data()
 
-    if args.data in ['relations', 'all']:
-        prepare_fire_relations()
+    if args.data in ['types', 'all']:
+        prepare_fire_types()
 
     if args.data in ['elekta', 'all']:
         prepare_markdown_data(name="elekta", filename="Elekta_Annual_Report_2023.txt")
