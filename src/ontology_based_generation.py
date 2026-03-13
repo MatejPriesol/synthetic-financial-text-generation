@@ -1,5 +1,6 @@
 import json
 import time
+import random
 
 from tqdm import tqdm
 from pathlib import Path
@@ -27,15 +28,26 @@ def build_ontology_schema(data, include_types=True, percentage_cutoff=2.0):
     num_of_elements = len(schema_elements)
 
     allowed_schemas = []
+    schema_weights = []
 
     # Filter based on the percentage cutoff
     for element, count in counts.items():
         pct = (count / num_of_elements) * 100
         if pct >= percentage_cutoff:
             allowed_schemas.append(element)
+            schema_weights.append(pct)
 
     print(f"Ontology Built: Kept {len(allowed_schemas)} schemas (Cutoff: {percentage_cutoff}%)")
-    return allowed_schemas
+    return allowed_schemas, schema_weights
+
+
+def sample_schemas(allowed_schemas, schema_weights, n=5):
+    sampled = random.choices(
+        population=allowed_schemas,
+        weights=schema_weights,
+        k=n
+    )
+    return sampled
 
 
 def main():
@@ -45,24 +57,29 @@ def main():
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "ontology_baseline_2_percent.json"
+    output_file = output_dir / "ontology_2_percent_half_fixed.json"
 
     data = load_processed_fire_data(data_path)
-    allowed_schemas = build_ontology_schema(data, include_types=True, percentage_cutoff=2.0)
+    allowed_schemas, schema_weights = build_ontology_schema(data, include_types=True, percentage_cutoff=2.0)
 
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 100
-    sentence_per_batch = 5
+    num_of_batches = 50
+    sentence_per_batch = 10
 
     system_prompt = PromptTemplates.get_system_prompt_with_template(allowed_schemas)
-    user_prompt = PromptTemplates.generate_n_sentences(sentence_per_batch)
+    #user_prompt = PromptTemplates.generate_n_sentences(sentence_per_batch)
 
     all_generated_sentences = []
 
     for i in tqdm(range(num_of_batches)):
+
+        chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=5)
+        user_prompt = PromptTemplates.generate_mixed_batch(n=10, forced_schemas=chosen_schemas)
+
         response = client.generate_message(system_prompt, user_prompt)
+        # response = client.print_payload(system_prompt, user_prompt)
 
         try:
             batch_data = json.loads(response)

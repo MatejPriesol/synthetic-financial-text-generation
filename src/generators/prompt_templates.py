@@ -68,6 +68,24 @@ class PromptTemplates:
 
 
     @staticmethod
+    def generate_mixed_batch(n, forced_schemas):
+        forced_count = len(forced_schemas)
+        free_count = n - forced_count
+
+        # Format the forced schemas into a clean, numbered list
+        forced_list = "\n".join([f"{i + 1}) {schema}" for i, schema in enumerate(forced_schemas)])
+
+        return (
+            f"Please generate {n} unique financial sentences.\n"
+            f"For the first {forced_count} sentences, on triplet in the sentence  MUST use the following schema:\n"
+            f"{forced_list}\n"
+            f"For the remaining {free_count} sentences, you may freely choose any valid structures from the ALLOWED STRUCTURES list in the system prompt. "
+            f"CRITICAL: Ensure high diversity in sentence structures, vocabulary, and financial contexts to avoid repetition."
+        )
+
+
+
+    @staticmethod
     def zero_shot(relation_types):
         # Join the list of relations into a string like
         rels_formatted = ", ".join(relation_types)
