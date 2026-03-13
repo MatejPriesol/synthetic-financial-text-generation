@@ -60,7 +60,8 @@ def evaluate_grammatical_correctness(sentences):
 
 def main():
     synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_650_samples_4_examples.json"
-    #synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_100_examples.json"
+    #synthetic_data_path = Path("data") / "03_synthetic" / "ontology_baseline_2_percent.json"
+    synthetic_data_path = Path("data") / "03_synthetic" / "ontology_2_percent_half_fixed.json"
     synthetic_data = load_synthetic_fire_data(synthetic_data_path)
 
     fire_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
@@ -74,11 +75,11 @@ def main():
     rebel_data_path = Path("data") / "02_processed" / "rebel_processed.json"
     rebel_data = load_rebel_sample(rebel_data_path, size=10000)
 
-    #sentences = [sample.sentence for sample in synthetic_data]
+    sentences = [sample.sentence for sample in synthetic_data]
     #sentences = [sample.sentence for sample in fire_data]
     #sentences = [sample.sentence for sample in elekta_data]
     #sentences = [sample.sentence for sample in vestas_data]
-    sentences = [sample.sentence for sample in rebel_data]
+    #sentences = [sample.sentence for sample in rebel_data]
 
     evaluate_grammatical_correctness(sentences)
 

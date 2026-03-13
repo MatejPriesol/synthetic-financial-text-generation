@@ -75,11 +75,13 @@ def profile_ontology(data, include_types=False, top_n=10):
 
     counts = Counter(schema_elements)
 
+    num_of_elements = len(schema_elements)
+
     print(f"{'Count':>5} | {'Triplet'}")
     print("-" * 60)
 
     for element, count in counts.most_common(top_n):
-        print(f"{count:>5} | {element}")
+        print(f"{(count / num_of_elements) * 100:>6.2f}% | {element}")
 
     print("\n")
     return counts
@@ -88,7 +90,8 @@ def profile_ontology(data, include_types=False, top_n=10):
 
 def main():
     original_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
-    synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_650_samples_4_examples.json"
+    # synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_650_samples_4_examples.json"
+    synthetic_data_path = Path("data") / "03_synthetic" / "ontology_2_percent_half_fixed.json"
     elekta_data_path = Path("data") / "02_processed" / "elekta_processed_w_triplets.json"
 
     original_data = load_processed_fire_data(original_data_path)
@@ -98,7 +101,8 @@ def main():
     #evaluate_relation_distribution(original_data, synthetic_data)
     #evaluate_obj_subj(synthetic_data)
 
-    counts = profile_ontology(original_data, include_types=True)
+    counts = profile_ontology(original_data, include_types=True, top_n=20)
+    counts = profile_ontology(synthetic_data, include_types=True, top_n=20)
     # counts = profile_ontology(elekta_data, include_types=False)
 
 if __name__ == "__main__":
