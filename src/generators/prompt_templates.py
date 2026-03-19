@@ -31,35 +31,66 @@ class PromptTemplates:
         schemas_formatted = ", ".join(allowed_schemas)
 
         return dedent(f"""
-        You are an expert synthetic data generator for financial relation extraction for the purpose of knowledge base generation. Your task is to generate financial news sentences with corresponding triplets. 
-
-        Important instructions:
-        1) Do NOT include any explanation or additional text, only the generated sentence and triplets.
-        2) Do NOT use literal newlines or line breaks inside string values. Keep all text on a single line.
-        3) You MUST return a valid JSON array of the following format:
-        [
-          {{
-            "text": "The generated financial news sentence.",
-            "triplets": [
+            You are an expert synthetic data generator for financial relation extraction for the purpose of knowledge base generation. Your task is to generate financial news sentences with corresponding triplets. 
+    
+            Important instructions:
+            1) Do NOT include any explanation or additional text, only the generated sentence and triplets.
+            2) Do NOT use literal newlines or line breaks inside string values. Keep all text on a single line.
+            3) You MUST return a valid JSON array of the following format:
+            [
               {{
-                "subject": "Subject Entity",
-                "relation": "ExactRelationName",
-                "object": "Object Entity",
-                "subject_type": "Type of the subject",
-                "object_type": "Type of the object"
+                "text": "The generated financial news sentence.",
+                "triplets": [
+                  {{
+                    "subject": "Subject Entity",
+                    "relation": "ExactRelationName",
+                    "object": "Object Entity",
+                    "subject_type": "Type of the subject",
+                    "object_type": "Type of the object"
+                  }}
+                ]
               }}
             ]
-          }}
-        ]
-        4) The sentence can have multiple triplets and you are allowed to generate compound sentences. 
-        5) For the triplets:
-           - "subject" and "object" MUST be the exact words or phrases used in the sentence.
-           - "subject_type" and "object_type" MUST exactly match the bracketed types from the allowed structures.
-           - "relation" MUST exactly match the relation in parentheses from the allowed structures.
-        6) You are ONLY allowed to use the following [SubjectType] --(Relation)--> [ObjectType] structures. Do not invent new relations or mix entity types that are not explicitly defined below.
-        7) CRITICAL GRAMMAR RULE: The 'relation' in your JSON must exactly match the allowed list, but in the generated 'text' sentence, you MUST express this relation using natural, fluent English.\n
-        ALLOWED STRUCTURES:
-        {schemas_formatted}
+            4) The sentence can have multiple triplets and you are allowed to generate compound sentences. 
+            5) For the triplets:
+               - "subject" and "object" MUST be the exact words or phrases used in the sentence.
+               - "subject_type" and "object_type" MUST exactly match the bracketed types from the allowed structures.
+               - "relation" MUST exactly match the relation in parentheses from the allowed structures.
+            6) You are ONLY allowed to use the following [SubjectType] --(Relation)--> [ObjectType] structures. Do not invent new relations or mix entity types that are not explicitly defined below.
+            7) CRITICAL GRAMMAR RULE: The 'relation' in your JSON must exactly match the allowed list, but in the generated 'text' sentence, you MUST express this relation using natural, fluent English.\n
+            ALLOWED STRUCTURES:
+            {schemas_formatted}
+        """).strip()
+
+    @staticmethod
+    def get_system_prompt_with_fixed_templates():
+        return dedent("""
+            You are an expert synthetic data generator for financial relation extraction for the purpose of knowledge base generation. Your task is to generate financial news sentences with corresponding triplets. 
+
+            Important instructions:
+            1) Do NOT include any explanation or additional text, only the generated sentence and triplets.
+            2) Do NOT use literal newlines or line breaks inside string values. Keep all text on a single line.
+            3) You MUST return a valid JSON array of the following format:
+            [
+              {
+                "text": "The generated financial news sentence.",
+                "triplets": [
+                  {
+                    "subject": "Subject Entity",
+                    "relation": "ExactRelationName",
+                    "object": "Object Entity",
+                    "subject_type": "Type of the subject",
+                    "object_type": "Type of the object"
+                  }
+                ]
+              }
+            ]
+            4) The sentence can have multiple triplets and you are allowed to generate compound sentences. 
+            5) For the triplets:
+               - "subject" and "object" MUST be the exact words or phrases used in the sentence.
+               - "subject_type", "object_type", and "relation" MUST exactly match the bracketed types and parentheses from the specific schema requested by the user.
+            6) You will be given [SubjectType] --(Relation)--> [ObjectType] structures. Do not invent new relations or mix entity types that are not explicitly defined in the user's request.
+            7) CRITICAL GRAMMAR RULE: The 'relation' in your JSON must exactly match the schema list, but in the generated 'text' sentence, you MUST express this relation using natural, fluent English.
         """).strip()
 
     @staticmethod
@@ -81,6 +112,25 @@ class PromptTemplates:
             f"{forced_list}\n"
             f"For the remaining {free_count} sentences, you may freely choose any valid structures from the ALLOWED STRUCTURES list in the system prompt. "
             f"CRITICAL: Ensure high diversity in sentence structures, vocabulary, and financial contexts to avoid repetition."
+        )
+
+
+    @staticmethod
+    def generate_batch_from_template(schemas):
+        n = len(schemas)
+
+        # Format the forced schemas into a clean, numbered list
+        schema_list = "\n".join([f"Sentence {i + 1}: {schema}" for i, schema in enumerate(schemas)])
+
+        return (
+            f"Please generate {n} unique financial sentences.\n\n"
+            f"You MUST follow this exact 1-to-1 mapping for the primary triplet in each sentence:\n"
+            f"{schema_list}\n\n"
+            f"CRITICAL RULES:\n"
+            f"- Sentence 1 MUST contain a triplet matching the schema for Sentence 1.\n"
+            f"- Sentence 2 MUST contain a triplet matching the schema for Sentence 2, and so on.\n"
+            f"- You may include additional valid financial triplets in the sentences if it sounds natural, but the requested schema MUST be the core of the sentence.\n"
+            f"- Ensure high diversity in sentence structures, length, vocabulary, and financial contexts to avoid repetition."
         )
 
 

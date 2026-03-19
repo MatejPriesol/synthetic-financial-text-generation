@@ -15,14 +15,14 @@ def test_connection():
     client.test_connection()
 
 def main():
-    client = GroqClient()
+    client = GroqClient(temperature=1.3)
 
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
     relations_path = Path("data") / "02_processed" / "fire_relation_types_processed.json"
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "few_shot_650_samples_4_examples.json"
+    output_file = output_dir / "few_shot_4_examples_temp_1_3.json"
 
 
     print("Loading data..")
@@ -34,7 +34,7 @@ def main():
     print("Starting batch generation")
 
     num_of_examples = 4
-    num_of_batches = 100
+    num_of_batches = 1
     sentence_per_batch = 10
 
     system_prompt = PromptTemplates.get_system_prompt()
@@ -46,7 +46,7 @@ def main():
         examples = random.sample(data, num_of_examples)
         rules = PromptTemplates.few_shot(relations, examples)
 
-        response = client.generate_message(system_prompt, rules, task)
+        response = client.print_payload(system_prompt, rules, task)
 
         try:
             batch_data = json.loads(response)

@@ -8,7 +8,7 @@ from src.generators.prompt_templates import PromptTemplates
 load_dotenv()
 
 class GroqClient:
-    def __init__(self):
+    def __init__(self, temperature=1):
         self.api_key = os.environ.get("GROQ_API_KEY")
         if not self.api_key:
             raise ValueError("GROQ_API_KEY not found in .env file")
@@ -18,6 +18,7 @@ class GroqClient:
             api_key=self.api_key
         )
         self.model="llama-3.3-70b-versatile"
+        self.temperature=temperature
 
     def test_connection(self):
         print("Testing connection...")
@@ -46,7 +47,8 @@ class GroqClient:
         try:
             response = self.client.chat.completions.create(
                 messages=payload,
-                model=self.model
+                model=self.model,
+                temperature=self.temperature
             )
             return response.choices[0].message.content
         except Exception as e:

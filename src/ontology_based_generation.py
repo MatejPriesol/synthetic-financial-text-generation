@@ -51,13 +51,13 @@ def sample_schemas(allowed_schemas, schema_weights, n=5):
 
 
 def main():
-    client = GroqClient()
+    client = GroqClient(temperature=1.3)
 
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "ontology_2_percent_half_fixed.json"
+    output_file = output_dir / "ontology_2_percent_all_fixed_temp13.json"
 
     data = load_processed_fire_data(data_path)
     allowed_schemas, schema_weights = build_ontology_schema(data, include_types=True, percentage_cutoff=2.0)
@@ -65,21 +65,24 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 50
+    num_of_batches = 40
     sentence_per_batch = 10
 
-    system_prompt = PromptTemplates.get_system_prompt_with_template(allowed_schemas)
+    #system_prompt = PromptTemplates.get_system_prompt_with_template(allowed_schemas)
+    system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
     #user_prompt = PromptTemplates.generate_n_sentences(sentence_per_batch)
 
     all_generated_sentences = []
 
     for i in tqdm(range(num_of_batches)):
 
-        chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=5)
-        user_prompt = PromptTemplates.generate_mixed_batch(n=10, forced_schemas=chosen_schemas)
+        chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
+
+        #user_prompt = PromptTemplates.generate_mixed_batch(n=sentence_per_batch, forced_schemas=chosen_schemas)
+        user_prompt = PromptTemplates.generate_batch_from_template(chosen_schemas)
 
         response = client.generate_message(system_prompt, user_prompt)
-        # response = client.print_payload(system_prompt, user_prompt)
+        #response = client.print_payload(system_prompt, user_prompt)
 
         try:
             batch_data = json.loads(response)
