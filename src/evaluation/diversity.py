@@ -1,14 +1,16 @@
 import torch
 import nltk
-from nltk.util import ngrams
+import argparse
+import json
 
+from nltk.util import ngrams
 from sentence_transformers import SentenceTransformer, util
 from collections import Counter
-from pathlib import Path
-from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data, load_rebel_sample
+
+from src.data_loader import load_data_for_eval
 
 
-def evaluate_ngrams_words(sentences, n=3, top_k=10):
+def evaluate_ngrams_words(sentences, n=3, top_k=10, verbose=False):
 
     all_ngrams = []
 
@@ -25,21 +27,23 @@ def evaluate_ngrams_words(sentences, n=3, top_k=10):
     # Calculate Unique N-Gram Ratio
     uniqueness_ratio = (unique_ngrams / total_ngrams) * 100 if total_ngrams > 0 else 0
 
-    print(f"Total {n}-grams generated: {total_ngrams}")
-    print(f"Unique {n}-grams:        {unique_ngrams}")
-    print(f"Uniqueness Ratio:      {uniqueness_ratio:.1f}%\n")
+    if verbose:
+        print(f"{str(top_k) + ' Most Frequent ' + str(n) + '-Grams':<30} | {'Count'}")
+        print("-" * 40)
 
-    print(f"{'Most Frequent ' + str(n) + '-Grams':<30} | {'Count'}")
-    print("-" * 40)
+        for phrase, count in ngram_counts.most_common(top_k):
+            phrase_str = " ".join(phrase)
+            print(f"{phrase_str:<30} | {count:>4}")
 
-    for phrase, count in ngram_counts.most_common(top_k):
-        phrase_str = " ".join(phrase)
-        print(f"{phrase_str:<30} | {count:>4}")
+    return {
+        f"total_{n}grams": total_ngrams,
+        f"unique_{n}grams": unique_ngrams,
+        f"{n}gram_uniqueness_ratio": round(uniqueness_ratio, 2)
+    }
 
-
-def evaluate_semantic_similarity(sentences):
+def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Using {device.upper()}")
+    #print(f"Using {device.upper()}")
 
     model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
     embeddings = model.encode(sentences, convert_to_tensor=True)
@@ -54,7 +58,6 @@ def evaluate_semantic_similarity(sentences):
     pairwise_scores = scores[row_idx, col_idx]
 
     avg_score = pairwise_scores.mean().item()
-    print(f"Average Pairwise Similarity: {avg_score:.3f}\n")
 
     sorted_scores, sorted_indices = torch.sort(pairwise_scores, descending=True)
 
@@ -62,59 +65,81 @@ def evaluate_semantic_similarity(sentences):
     sorted_rows = row_idx[sorted_indices].tolist()
     sorted_cols = col_idx[sorted_indices].tolist()
 
-    print("Most similar non-identical sentences:")
+    if verbose:
+        print("Most similar non-identical sentences:")
+
     count = 0
     iterated = 0
 
     for i in range(len(sorted_scores_list)):
         score = sorted_scores_list[i]
 
-        if score >= 0.9:
+        if score >= threshold:
             iterated += 1
             continue
 
         idx1 = sorted_rows[i]
         idx2 = sorted_cols[i]
 
-        print(f"Pair {count + 1} - Score: {score:.3f}, idx1: {idx1}, idx2: {idx2}")
-        print(f"  A: {sentences[idx1]}")
-        print(f"  B: {sentences[idx2]}\n")
+        if verbose:
+            print(f"Pair {count + 1} - Score: {score:.3f}, idx1: {idx1}, idx2: {idx2}")
+            print(f"  A: {sentences[idx1]}")
+            print(f"  B: {sentences[idx2]}\n")
 
         count += 1
         if count >= 10:
             break
 
-    print(f"Iterated over {iterated + count} pairs.")
-    print(f"Percentage of sentences with score >= 0.9: {100 * iterated / len(sorted_scores_list):.5f}%")
 
-    return scores
+    return {
+        "avg_pairwise_sim": round(avg_score, 3),
+        f"percentage_above_{threshold}": round(100 * iterated / len(sorted_scores_list), 5)
+    }, scores
 
 
+def run_all_diversity(sentences, verbose=False):
+    module_results = {}
+
+    module_results["semantic"], _ = evaluate_semantic_similarity(sentences, verbose=verbose)
+    module_results["ngrams"] = evaluate_ngrams_words(sentences, verbose=verbose)
+
+    return module_results
 
 def main():
-    synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_650_samples_4_examples.json"
-    #synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_100_examples.json"
-    synthetic_data = load_synthetic_fire_data(synthetic_data_path)
+    parser = argparse.ArgumentParser(description="Diversity Evaluation Local Runner")
+    parser.add_argument("--data", type=str, required=True, help="Path to the dataset")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed results")
 
-    fire_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
-    fire_data = load_processed_fire_data(fire_data_path)
+    # Specific eval flags
+    parser.add_argument("--semantic", action="store_true", help="Run only semantic analysis")
+    parser.add_argument("--ngrams", action="store_true", help="Run only n-gram analysis")
 
-    elekta_data_path = Path("data") / "02_processed" / "elekta_processed.json"
-    elekta_data = load_processed_markdown_data(elekta_data_path)
-    vestas_data_path = Path("data") / "02_processed" / "vestas_processed.json"
-    vestas_data = load_processed_markdown_data(vestas_data_path)
+    args = parser.parse_args()
 
-    rebel_data_path = Path("data") / "02_processed" / "rebel_processed.json"
-    rebel_data = load_rebel_sample(rebel_data_path, size=10000)
+    data, sentences = load_data_for_eval(args.data)
 
-    # sentences = [sample.sentence for sample in synthetic_data]
-    # sentences = [sample.sentence for sample in fire_data]
-    # sentences = [sample.sentence for sample in elekta_data]
-    # sentences = [sample.sentence for sample in vestas_data]
-    sentences = [sample.sentence for sample in rebel_data]
+    specific_flags = [
+        args.semantic,
+        args.ngrams
+    ]
 
-    #evaluate_ngrams_words(sentences, n=3)
-    evaluate_semantic_similarity(sentences)
+    local_results = {}
+
+    # If any of the specific flags are True, only run those
+    if any(specific_flags):
+        print("Running selected diversity evaluations...\n")
+        if args.semantic:
+            local_results["semantic"], _ = evaluate_semantic_similarity(sentences, verbose=args.verbose)
+        if args.ngrams:
+            local_results["ngrams"] = evaluate_ngrams_words(sentences, verbose=args.verbose)
+
+    # If all specific flags are False, default to running everything
+    else:
+        print("No specific flags detected. Running all diversity evaluations by default...\n")
+        local_results = run_all_diversity(sentences, verbose=args.verbose)
+
+    print("\n=== LOCAL RUN RESULTS ===")
+    print(json.dumps(local_results, indent=2))
 
 if __name__ == "__main__":
     main()

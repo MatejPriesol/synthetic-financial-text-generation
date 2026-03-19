@@ -251,5 +251,24 @@ def main():
     print(f"Sample 2: {data[1].triplets}")
 
 
+
+# Load the data for the purpose of evaluation (automatically determine which function to use)
+def load_data_for_eval(data_path: str):
+    path = Path(data_path)
+
+    # TODO: Update for better distinction, probably after the loading od data is refactored
+    if "03_synthetic" in path.parts:
+        data = load_synthetic_fire_data(path)
+    elif "fire" in path.name:
+        data = load_processed_fire_data(path)
+    elif "rebel" in path.name:
+        data = load_rebel_sample(path)
+    else:
+        data = load_processed_markdown_data(path)
+
+    sentences = [sample.sentence for sample in data]
+
+    return data, sentences
+
 if __name__ == "__main__":
     main()

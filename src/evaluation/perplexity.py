@@ -1,14 +1,16 @@
-from pathlib import Path
-from src.data_loader import load_synthetic_fire_data, load_processed_fire_data, load_processed_markdown_data, load_rebel_sample
-
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+import argparse
+import json
 import numpy as np
 
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
-def evaluate_perplexity(sentences):
+from src.data_loader import load_data_for_eval
+
+
+
+def evaluate_perplexity(sentences, verbose=False):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Using {device.upper()}")
 
     # Load model (for now GPT-2, later I will try Llama 3.1.-8B)
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
@@ -20,8 +22,8 @@ def evaluate_perplexity(sentences):
     with torch.no_grad():  # Disable gradient tracking to save memory
         for text in sentences:
             # Skip empty sentences (shouldn't be the case)
-            if not text.strip():
-                print("Empty sentence!")
+            if not text.strip() and verbose:
+                #print("Empty sentence!")
                 continue
 
             # Tokenize the sentence
@@ -29,8 +31,8 @@ def evaluate_perplexity(sentences):
             input_ids = encodings.input_ids
 
             # Skip just in case there's one word (shouldn't be the case)
-            if input_ids.size(1) < 2:
-                print("One word sentence!")
+            if (input_ids.size(1) < 2) and verbose:
+                #print("One word sentence!")
                 continue
 
             # Negative log-likelihood
@@ -50,46 +52,61 @@ def evaluate_perplexity(sentences):
     avg_ppl = np.mean(all_scores)
     median_ppl = np.median(all_scores)
 
-    print(f"Average Perplexity: {avg_ppl:.2f}")
-    print(f"Median Perplexity:  {median_ppl:.2f}\n")
+    if verbose:
+        print("Low perplexity:")
+        for i in range(5):
+            print(f"Score: {scored_sentences[i]['perplexity']:.2f} | {scored_sentences[i]['text']}")
 
-    print("Low perplexity:")
-    for i in range(5):
-        print(f"Score: {scored_sentences[i]['perplexity']:.2f} | {scored_sentences[i]['text']}")
+        print("\nMedian perplexity:")
+        mid_idx = len(scored_sentences) // 2
+        for i in range(mid_idx - 2, mid_idx + 3):
+            print(f"Score: {scored_sentences[i]['perplexity']:.2f} | {scored_sentences[i]['text']}")
 
-    print("\nMedian perplexity:")
-    mid_idx = len(scored_sentences) // 2
-    for i in range(mid_idx - 2, mid_idx + 3):
-        print(f"Score: {scored_sentences[i]['perplexity']:.2f} | {scored_sentences[i]['text']}")
+        print("\nHigh perplexity:")
+        for i in range(1, 6):
+            print(f"Score: {scored_sentences[-i]['perplexity']:.2f} | {scored_sentences[-i]['text']}")
 
-    print("\nHigh perplexity:")
-    for i in range(1, 6):
-        print(f"Score: {scored_sentences[-i]['perplexity']:.2f} | {scored_sentences[-i]['text']}")
+    return {
+        "avg_perplexity": round(avg_ppl, 3),
+        "median_perplexity": round(median_ppl, 3),
+    }
+
+
+def run_all_perplexity(sentences, verbose=False):
+    return {"perplexity": evaluate_perplexity(sentences, verbose=verbose)}
+
 
 def main():
-    #synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_650_samples_4_examples.json"
-    #synthetic_data_path = Path("data") / "03_synthetic" / "ontology_baseline_2_percent.json"
-    synthetic_data_path = Path("data") / "03_synthetic" / "ontology_2_percent_half_fixed.json"
-    synthetic_data = load_synthetic_fire_data(synthetic_data_path)
+    parser = argparse.ArgumentParser(description="Perplexity Evaluation Local Runner")
+    parser.add_argument("--data", type=str, required=True, help="Path to the dataset")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed results")
 
-    fire_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
-    fire_data = load_processed_fire_data(fire_data_path)
+    # Specific eval flags
+    parser.add_argument("--perplexity", action="store_true", help="Run only perplexity analysis")
 
-    elekta_data_path = Path("data") / "02_processed" / "elekta_processed.json"
-    elekta_data = load_processed_markdown_data(elekta_data_path)
-    vestas_data_path = Path("data") / "02_processed" / "vestas_processed.json"
-    vestas_data = load_processed_markdown_data(vestas_data_path)
+    args = parser.parse_args()
 
-    rebel_data_path = Path("data") / "02_processed" / "rebel_processed.json"
-    rebel_data = load_rebel_sample(rebel_data_path, size=10000)
+    data, sentences = load_data_for_eval(args.data)
 
-    sentences = [sample.sentence for sample in synthetic_data]
-    # sentences = [sample.sentence for sample in fire_data]
-    # sentences = [sample.sentence for sample in elekta_data]
-    # sentences = [sample.sentence for sample in vestas_data]
-    # sentences = [sample.sentence for sample in rebel_data]
+    specific_flags = [
+        args.perplexity
+    ]
 
-    evaluate_perplexity(sentences)
+    local_results = {}
+
+    # If any of the specific flags are True, only run those
+    if any(specific_flags):
+        print("Running selected perplexity evaluations...\n")
+        if args.perplexity:
+            local_results["perplexity"] = evaluate_perplexity(sentences, verbose=args.verbose)
+
+    # If all specific flags are False, default to running everything
+    else:
+        print("No specific flags detected. Running all perplexity evaluations by default...\n")
+        local_results = run_all_perplexity(sentences, verbose=args.verbose)
+
+    print("\n=== LOCAL RUN RESULTS ===")
+    print(json.dumps(local_results, indent=2))
 
 if __name__ == "__main__":
     main()

@@ -1,41 +1,10 @@
+import argparse
 import json
+
 from collections import Counter
-from pathlib import Path
-from src.data_loader import load_processed_fire_data, load_synthetic_fire_data, load_processed_markdown_data
+from src.data_loader import load_data_for_eval
 
-
-def evaluate_relation_distribution(original_data, synthetic_data):
-    print("Evaluating relation distribution..\n")
-
-    # Extract all relations
-    orig_rels = [t.relation for sample in original_data for t in sample.triplets]
-    synth_rels = [t.relation for sample in synthetic_data for t in sample.triplets]
-
-    orig_counts = Counter(orig_rels)
-    synth_counts = Counter(synth_rels)
-
-    # Calculate total triplets to compute percentages
-    total_orig = sum(orig_counts.values())
-    total_gen = sum(synth_counts.values())
-
-    # Get a unique list of all relations found in either dataset
-    all_unique_relations = sorted(list(set(orig_rels + synth_rels)))
-
-    # Print a formatted table
-    print(f"{'Relation':<25} | {'Original %':<12} | {'Generated %'}")
-    print("-" * 55)
-
-    for rel in all_unique_relations:
-        orig_pct = (orig_counts.get(rel, 0) / total_orig) * 100 if total_orig > 0 else 0
-        gen_pct = (synth_counts.get(rel, 0) / total_gen) * 100 if total_gen > 0 else 0
-
-        print(
-            f"{rel:<25} | {orig_pct:>5.1f}% ({orig_counts.get(rel, 0):>3}) | {gen_pct:>5.1f}% ({synth_counts.get(rel, 0):>3})")
-
-
-def evaluate_obj_subj(synthetic_data, top_n=10):
-    print("Evaluating object and subject distributions..\n")
-
+def evaluate_obj_subj(synthetic_data, top_n=10, verbose=False):
     subjects = [triplet.subject for sample in synthetic_data for triplet in sample.triplets]
     objects = [triplet.object for sample in synthetic_data for triplet in sample.triplets]
 
@@ -45,20 +14,23 @@ def evaluate_obj_subj(synthetic_data, top_n=10):
     top_subjects = subject_counts.most_common(top_n)
     top_objects = object_counts.most_common(top_n)
 
-    print(f"{'Top Subjects (Heads)':<25} | {'Top Objects (Tails)'}")
-    print("-" * 50)
+    if verbose:
+        print(f"{'Top Subjects (Heads)':<25} | {'Top Objects (Tails)'}")
+        print("-" * 50)
 
-    for i in range(top_n):
-        s_str = f"{top_subjects[i][0]} ({top_subjects[i][1]})" if i < len(top_subjects) else ""
-        o_str = f"{top_objects[i][0]} ({top_objects[i][1]})" if i < len(top_objects) else ""
+        for i in range(top_n):
+            s_str = f"{top_subjects[i][0]} ({top_subjects[i][1]})" if i < len(top_subjects) else ""
+            o_str = f"{top_objects[i][0]} ({top_objects[i][1]})" if i < len(top_objects) else ""
 
-        print(f"{s_str:<25} | {o_str}")
-    print("\n")
+            print(f"{s_str:<25} | {o_str}")
+
+    return {
+        "top_subjects": {k: v for k, v in top_subjects},
+        "top_objects": {k: v for k, v in top_objects}
+    }
 
 
-def profile_ontology(data, include_types=False, top_n=10):
-    print(f"Profiling Ontology Schema (Include Types: {include_types})\n")
-
+def profile_ontology(data, include_types=False, top_n=10, verbose=False):
     schema_elements = []
 
     for sample in data:
@@ -66,44 +38,76 @@ def profile_ontology(data, include_types=False, top_n=10):
             if include_types:
                 s_type = getattr(t, 'subject_type', 'UNKNOWN_TYPE')
                 o_type = getattr(t, 'object_type', 'UNKNOWN_TYPE')
-
-                # Format: [Company] --(Value)--> [Money]
                 signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
                 schema_elements.append(signature)
             else:
                 schema_elements.append(t.relation)
 
     counts = Counter(schema_elements)
-
     num_of_elements = len(schema_elements)
 
-    print(f"{'Count':>5} | {'Triplet'}")
-    print("-" * 60)
+    if verbose:
+        print(f"\n{'Count':>7} | {'Triplet (or relation if no entity types)'}")
+        print("-" * 60)
 
-    for element, count in counts.most_common(top_n):
-        print(f"{(count / num_of_elements) * 100:>6.2f}% | {element}")
+        for element, count in counts.most_common(top_n):
+            pct_str = f"{(count / num_of_elements) * 100:.2f}%"
+            print(f"{pct_str:>7} | {element}")
 
-    print("\n")
-    return counts
+    return {
+        "total_triplets_extracted": num_of_elements,
+        "unique_schemas_used": len(counts),
+        "top_schemas": {element: count for element, count in counts.most_common(top_n)}
+    }
 
+# Check if it contains the types (under the assumption that if the first one does, they all do) for the ontology
+def has_types_helper(data):
+    if len(data) > 0 and len(data[0].triplets) > 0:
+        first_triplet = data[0].triplets[0]
+        subject_type_val = getattr(first_triplet, 'subject_type', None)
+        return bool(subject_type_val)
+
+
+def run_all_statistical(data, verbose=False):
+    return {"entities": evaluate_obj_subj(data, verbose=verbose),
+            "ontology": profile_ontology(data, include_types=has_types_helper(data), verbose=verbose)}
 
 
 def main():
-    original_data_path = Path("data") / "02_processed" / "fire_train_processed.json"
-    # synthetic_data_path = Path("data") / "03_synthetic" / "few_shot_650_samples_4_examples.json"
-    synthetic_data_path = Path("data") / "03_synthetic" / "ontology_2_percent_half_fixed.json"
-    elekta_data_path = Path("data") / "02_processed" / "elekta_processed_w_triplets.json"
+    parser = argparse.ArgumentParser(description="Statistical Evaluation Local Runner")
+    parser.add_argument("--data", type=str, required=True, help="Path to the dataset")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed results")
 
-    original_data = load_processed_fire_data(original_data_path)
-    synthetic_data = load_synthetic_fire_data(synthetic_data_path)
-    elekta_data = load_processed_markdown_data(elekta_data_path)
+    # Specific eval flags
+    parser.add_argument("--entities", action="store_true", help="Run only entity distribution")
+    parser.add_argument("--ontology", action="store_true", help="Run only ontology profiling")
 
-    #evaluate_relation_distribution(original_data, synthetic_data)
-    #evaluate_obj_subj(synthetic_data)
+    args = parser.parse_args()
 
-    counts = profile_ontology(original_data, include_types=True, top_n=20)
-    counts = profile_ontology(synthetic_data, include_types=True, top_n=20)
-    # counts = profile_ontology(elekta_data, include_types=False)
+    data, sentences = load_data_for_eval(args.data)
+
+    specific_flags = [
+        args.entities,
+        args.ontology
+    ]
+
+    local_results = {}
+
+    # If any of the specific flags are True, only run those
+    if any(specific_flags):
+        print("Running selected statistical evaluations...\n")
+        if args.entities:
+            local_results["entities"] = evaluate_obj_subj(data, verbose=args.verbose)
+        if args.ontology:
+            local_results["ontology"] = profile_ontology(data, include_types=has_types_helper(data), verbose=args.verbose)
+
+    # If all specific flags are False, default to running everything
+    else:
+        print("No specific flags detected. Running all statistical evaluations by default...\n")
+        local_results = run_all_statistical(data, verbose=args.verbose)
+
+    print("\n=== LOCAL RUN RESULTS ===")
+    print(json.dumps(local_results, indent=2))
 
 if __name__ == "__main__":
     main()
