@@ -57,7 +57,7 @@ def main():
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "ontology_2_percent_all_fixed_temp13.json"
+    output_file = output_dir / "ontology_2_percent_all_fixed_temp13_schemas.json"
 
     data = load_processed_fire_data(data_path)
     allowed_schemas, schema_weights = build_ontology_schema(data, include_types=True, percentage_cutoff=2.0)
@@ -65,7 +65,7 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 40
+    num_of_batches = 1
     sentence_per_batch = 10
 
     #system_prompt = PromptTemplates.get_system_prompt_with_template(allowed_schemas)
@@ -86,10 +86,20 @@ def main():
 
         try:
             batch_data = json.loads(response)
-            all_generated_sentences.extend(batch_data)
+
+            # Goal: embed the requested schema for eval purposes
+            for j, item in enumerate(batch_data):
+                # Ignore any sentences that go beyond the templates
+                if j >= len(chosen_schemas):
+                    break
+
+                item["requested_schema"] = chosen_schemas[j]
+                all_generated_sentences.append(item)
+
         except json.JSONDecodeError as e:
             print(f"  -> Failed to parse JSON for this batch. Raw output:\n{response}")
-        time.sleep(2)
+
+        time.sleep(1)
 
     print(f"\nGeneration complete! Saving {len(all_generated_sentences)} sentences")
 

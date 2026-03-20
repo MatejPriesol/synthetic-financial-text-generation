@@ -25,6 +25,7 @@ class SentenceSample:
     id: int | str
     sentence: str
     triplets: List[Triplet]
+    requested_schema: str = None
 
 def load_fire_data(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -104,7 +105,8 @@ def load_synthetic_fire_data(filepath):
         example = SentenceSample(
             id=f"synth_{i}",
             sentence=item.get('text', ''),
-            triplets=triplets
+            triplets=triplets,
+            requested_schema = item.get('requested_schema')
         )
         examples.append(example)
 

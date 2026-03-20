@@ -60,6 +60,51 @@ def profile_ontology(data, include_types=False, top_n=10, verbose=False):
         "top_schemas": {element: count for element, count in counts.most_common(top_n)}
     }
 
+
+def evaluate_template_adherence(data, verbose=False):
+    matched_count = 0
+    total_valid_samples = 0
+
+    if verbose:
+        print("\n Template Adherence Mismatches:")
+
+    for sample in data:
+        req_schema = getattr(sample, 'requested_schema', None)
+
+        # If this dataset wasn't generated with templates, skip it
+        if not req_schema:
+            continue
+
+        total_valid_samples += 1
+
+        # Reconstruct the generated schemas from the sample's triplets
+        gen_schemas = []
+        for t in sample.triplets:
+            s_type = getattr(t, 'subject_type', 'UNKNOWN')
+            o_type = getattr(t, 'object_type', 'UNKNOWN')
+            gen_schemas.append(f"[{s_type}] --({t.relation})--> [{o_type}]")
+
+        # Check if at least one of the triplets followed the schema
+        if req_schema in gen_schemas:
+            matched_count += 1
+        else:
+            if verbose:
+                print(f"FAILED:\n  Sentence:  {sample.sentence}")
+                print(f"  Requested: {req_schema}")
+                print(f"  Generated: {gen_schemas}\n")
+
+    # Calculate the final score
+    adherence_score = (matched_count / total_valid_samples) * 100 if total_valid_samples > 0 else 0
+
+    if verbose and 0 < total_valid_samples == matched_count:
+        print("100% Adherence, no mismatches found.\n")
+
+    return {
+        "adherence_percentage": round(adherence_score, 2),
+        "total_checked": total_valid_samples,
+        "total_matched": matched_count
+    }
+
 # Check if it contains the types (under the assumption that if the first one does, they all do) for the ontology
 def has_types_helper(data):
     if len(data) > 0 and len(data[0].triplets) > 0:
@@ -69,9 +114,13 @@ def has_types_helper(data):
 
 
 def run_all_statistical(data, verbose=False):
-    return {"entities": evaluate_obj_subj(data, verbose=verbose),
+    results = {"entities": evaluate_obj_subj(data, verbose=verbose),
             "ontology": profile_ontology(data, include_types=has_types_helper(data), verbose=verbose)}
 
+    if len(data) > 0 and getattr(data[0], 'requested_schema', None):
+        results["template_adherence"] = evaluate_template_adherence(data, verbose=verbose)
+
+    return results
 
 def main():
     parser = argparse.ArgumentParser(description="Statistical Evaluation Local Runner")
@@ -81,6 +130,7 @@ def main():
     # Specific eval flags
     parser.add_argument("--entities", action="store_true", help="Run only entity distribution")
     parser.add_argument("--ontology", action="store_true", help="Run only ontology profiling")
+    parser.add_argument("--template-adherence", action="store_true", help="Run only template adherence")
 
     args = parser.parse_args()
 
@@ -88,7 +138,8 @@ def main():
 
     specific_flags = [
         args.entities,
-        args.ontology
+        args.ontology,
+        args.template_adherence
     ]
 
     local_results = {}
@@ -100,6 +151,8 @@ def main():
             local_results["entities"] = evaluate_obj_subj(data, verbose=args.verbose)
         if args.ontology:
             local_results["ontology"] = profile_ontology(data, include_types=has_types_helper(data), verbose=args.verbose)
+        if args.template_adherence:
+            local_results["template_adherence"] = evaluate_template_adherence(data, verbose=args.verbose)
 
     # If all specific flags are False, default to running everything
     else:
