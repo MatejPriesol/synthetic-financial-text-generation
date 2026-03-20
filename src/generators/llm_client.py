@@ -1,9 +1,7 @@
 import os
-import json
+import requests
 from dotenv import load_dotenv
 from openai import OpenAI
-
-from src.generators.prompt_templates import PromptTemplates
 
 load_dotenv()
 
@@ -71,3 +69,40 @@ class GroqClient:
             print(f"\n[{message['role'].upper()}]")
             print(message['content'])
         print("========================================\n")
+
+# Not usable right now, the models are not good enough
+class LocalClient:
+    def __init__(self, temperature=1.3):
+        self.temperature = temperature
+        self.url = "http://localhost:11434/api/chat"
+
+    def generate_message(self, system_prompt, user_prompt):
+        payload = {
+            "model": "qwen2.5",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "stream": False,
+            "options": {
+                "temperature": self.temperature,
+                "num_gpu": 20
+            },
+            "format": "json"
+        }
+
+        try:
+            response = requests.post(self.url, json=payload)
+            response_data = response.json()
+
+            # 1. Check for an error instead of a message
+            if "error" in response_data:
+                print(f"\n[!] OLLAMA API ERROR: {response_data['error']}")
+                return None
+
+            # If no error, return the message
+            return response_data["message"]["content"]
+
+        except Exception as e:
+            print(f"\n[!] Python Request Error: {e}")
+            return None
