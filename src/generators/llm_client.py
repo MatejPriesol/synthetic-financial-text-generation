@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -7,16 +8,31 @@ load_dotenv()
 
 class GroqClient:
     def __init__(self, temperature=1):
-        self.api_key = os.environ.get("GROQ_API_KEY")
-        if not self.api_key:
-            raise ValueError("GROQ_API_KEY not found in .env file")
-
-        self.client = OpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=self.api_key
-        )
         self.model="llama-3.3-70b-versatile"
         self.temperature=temperature
+
+        self.api_keys = []
+        for i in range(1,4):
+            key = os.environ.get(f"GROQ_API_KEY_{i}")
+            if key:
+                self.api_keys.append(key)
+
+        if not self.api_keys:
+            raise ValueError("GROQ_API_KEY not found in .env file")
+
+        self.current_key_index = 0
+        self._init_client()
+
+    def _init_client(self):
+        self.client = OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=self.api_keys[self.current_key_index]
+        )
+
+    def rotate_key(self):
+        self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+        print("\n  [!] Rate limit reached, rotating key...")
+        self._init_client()
 
     def test_connection(self):
         print("Testing connection...")
@@ -42,15 +58,25 @@ class GroqClient:
             {"role": "user", "content": full_user_msg}
         ]
 
-        try:
-            response = self.client.chat.completions.create(
-                messages=payload,
-                model=self.model,
-                temperature=self.temperature
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"Error generating message: {e}"
+        max_retries = len(self.api_keys)
+
+        for i in range(max_retries):
+
+            try:
+                response = self.client.chat.completions.create(
+                    messages=payload,
+                    model=self.model,
+                    temperature=self.temperature
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                error_msg = str(e)
+                if "429" in error_msg:
+                    self.rotate_key()
+                    time.sleep(2)
+                else:
+                    print(f"\n  [!] Groq API Error: {e}")
+                    return None
 
 
     def print_payload(self, system_prompt, prompt_part1, prompt_part2=None):

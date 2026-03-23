@@ -1,6 +1,7 @@
 import json
 import time
 import random
+import argparse
 
 from tqdm import tqdm
 from pathlib import Path
@@ -51,13 +52,19 @@ def sample_schemas(allowed_schemas, schema_weights, n=5):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Ontology based generation")
+
+    # Path to the data
+    parser.add_argument("--test", "-t", action="store_true", help="If enabled, only prints the payload")
+    args = parser.parse_args()
+
     client = GroqClient(temperature=1.3)
 
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "ontology_2_percent_all_fixed_temp13_schemas.json"
+    output_file = output_dir / "ontology_2_percent_all_fixed_temp13_schemas_long.json"
 
     data = load_processed_fire_data(data_path)
     allowed_schemas, schema_weights = build_ontology_schema(data, include_types=True, percentage_cutoff=2.0)
@@ -65,7 +72,7 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 1
+    num_of_batches = 250
     sentence_per_batch = 10
 
     #system_prompt = PromptTemplates.get_system_prompt_with_template(allowed_schemas)
@@ -74,39 +81,52 @@ def main():
 
     all_generated_sentences = []
 
-    for i in tqdm(range(num_of_batches)):
-
+    if args.test:
         chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
-
-        #user_prompt = PromptTemplates.generate_mixed_batch(n=sentence_per_batch, forced_schemas=chosen_schemas)
         user_prompt = PromptTemplates.generate_batch_from_template(chosen_schemas)
+        client.print_payload(system_prompt, user_prompt)
+        return
 
-        response = client.generate_message(system_prompt, user_prompt)
-        #response = client.print_payload(system_prompt, user_prompt)
+    try:
+        for i in tqdm(range(num_of_batches)):
 
-        try:
-            batch_data = json.loads(response)
+            chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
 
-            # Goal: embed the requested schema for eval purposes
-            for j, item in enumerate(batch_data):
-                # Ignore any sentences that go beyond the templates
-                if j >= len(chosen_schemas):
-                    break
+            #user_prompt = PromptTemplates.generate_mixed_batch(n=sentence_per_batch, forced_schemas=chosen_schemas)
+            user_prompt = PromptTemplates.generate_batch_from_template(chosen_schemas)
 
-                item["requested_schema"] = chosen_schemas[j]
-                all_generated_sentences.append(item)
+            response = client.generate_message(system_prompt, user_prompt)
 
-        except json.JSONDecodeError as e:
-            print(f"  -> Failed to parse JSON for this batch. Raw output:\n{response}")
+            # Ran out of the API keys and reached the rate limit, so break
+            if response is None:
+                print(f"  [!] Used all the rate limits, stopping generation at batch {i+1}")
+                break
 
-        time.sleep(1)
+            try:
+                batch_data = json.loads(response)
 
-    print(f"\nGeneration complete! Saving {len(all_generated_sentences)} sentences")
+                # Goal: embed the requested schema for eval purposes
+                for j, item in enumerate(batch_data):
+                    # Ignore any sentences that go beyond the templates
+                    if j >= len(chosen_schemas):
+                        break
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(all_generated_sentences, f, indent=4)
+                    item["requested_schema"] = chosen_schemas[j]
+                    all_generated_sentences.append(item)
 
-    print(f"Success! Data saved to {output_file}")
+            except json.JSONDecodeError as e:
+                print(f"  -> Failed to parse JSON for this batch. Raw output:\n{response}")
+
+            time.sleep(2)
+    except KeyboardInterrupt:
+        print("\n[!] Script manually stopped.")
+    except Exception as e:
+        print(f"\n[!] Unexpected error: {e}.")
+    finally:
+        print(f"\nGeneration stopped/finished. Saving {len(all_generated_sentences)} sentences...")
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(all_generated_sentences, f, indent=4)
+        print(f"Success! Data saved to {output_file}")
 
 if __name__ == "__main__":
     main()
