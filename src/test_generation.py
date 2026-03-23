@@ -7,7 +7,7 @@ from pathlib import Path
 
 from src.generators.llm_client import GroqClient
 from src.generators.prompt_templates import PromptTemplates
-from src.data_loader import load_fire_data, load_fire_types, load_processed_fire_data, load_processed_fire_types
+from src.data_loader import load_fire_data, load_fire_types, load_processed_data, load_processed_fire_types
 
 
 def test_connection():
@@ -26,7 +26,7 @@ def main():
 
 
     print("Loading data..")
-    data = load_processed_fire_data(data_path)
+    data = load_processed_data(data_path)
     relations = load_processed_fire_types(relations_path)
     print(f"Loaded {len(data)} data samples and {len(relations)} relations")
 

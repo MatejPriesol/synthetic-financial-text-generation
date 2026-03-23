@@ -16,7 +16,7 @@ from collections import Counter
 
 from src.generators.llm_client import GroqClient, LocalClient
 from src.generators.prompt_templates import PromptTemplates
-from src.data_loader import load_processed_fire_data
+from src.data_loader import load_processed_data
 
 
 def build_ontology_schema(data, include_types=True, percentage_cutoff=2.0):
@@ -68,7 +68,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "local_llama_ontology_2_percent_all_fixed_temp13_schemas.json"
 
-    data = load_processed_fire_data(data_path)
+    data = load_processed_data(data_path)
     allowed_schemas, schema_weights = build_ontology_schema(data, include_types=True, percentage_cutoff=2.0)
 
     print("\n--------------------")

@@ -27,6 +27,11 @@ class SentenceSample:
     triplets: List[Triplet]
     requested_schema: str = None
 
+
+"""
+RAW DATA LOADERS
+"""
+
 def load_fire_data(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
@@ -68,49 +73,13 @@ def load_fire_data(filepath):
 
     return all_samples
 
+
 def load_fire_types(filepath, source):
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
 
     return list(raw_data[source].keys())
 
-def load_processed_fire_types(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        types = json.load(f)
-
-    return types
-
-
-def load_processed_fire_data(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        raw_data = json.load(f)
-
-    # Convert to Triplet objects
-    samples = []
-    for item in raw_data:
-        triplets = [Triplet(**t) for t in item['triplets']]
-        samples.append(SentenceSample(id=item['id'], sentence=item['sentence'], triplets=triplets))
-
-    return samples
-
-def load_synthetic_fire_data(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        raw_data = json.load(f)
-
-    examples = []
-
-    for i, item in enumerate(raw_data):
-        triplets = [Triplet(**t) for t in item.get('triplets', [])]
-
-        example = SentenceSample(
-            id=f"synth_{i}",
-            sentence=item.get('text', ''),
-            triplets=triplets,
-            requested_schema = item.get('requested_schema')
-        )
-        examples.append(example)
-
-    return examples
 
 def load_markdown_data(filepath, name):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -161,24 +130,6 @@ def load_markdown_data(filepath, name):
     return samples
 
 
-def load_processed_markdown_data(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        raw_data = json.load(f)
-
-    samples = []
-    for item in raw_data:
-        triplets = [Triplet(**t) for t in item.get('triplets', [])]
-
-        # Rebuild the SentenceSample
-        samples.append(SentenceSample(
-            id=item['id'],
-            sentence=item['sentence'],
-            triplets=triplets
-        ))
-
-    return samples
-
-
 def load_rebel_data(filepath, name="rebel"):
     samples = []
     counter = 0
@@ -213,15 +164,17 @@ def load_rebel_data(filepath, name="rebel"):
     return samples
 
 
-def load_processed_rebel_data(filepath):
+"""
+PROCESSED DATA LOADERS
+"""
+
+def load_processed_data(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
 
     samples = []
     for item in raw_data:
         triplets = [Triplet(**t) for t in item.get('triplets', [])]
-
-        # Rebuild the SentenceSample object
         samples.append(SentenceSample(
             id=item['id'],
             sentence=item['sentence'],
@@ -231,8 +184,15 @@ def load_processed_rebel_data(filepath):
     return samples
 
 
+def load_processed_fire_types(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        types = json.load(f)
+
+    return types
+
+
 def load_rebel_sample(filepath, size=10000):
-    samples = load_processed_rebel_data(filepath)
+    samples = load_processed_data(filepath)
 
     if size < len(samples):
         return random.sample(samples, size)
@@ -240,37 +200,61 @@ def load_rebel_sample(filepath, size=10000):
     return samples
 
 
+"""
+SYNTHETIC DATA LOADERS
+"""
+
+def load_synthetic_fire_data(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        raw_data = json.load(f)
+
+    examples = []
+
+    for i, item in enumerate(raw_data):
+        triplets = [Triplet(**t) for t in item.get('triplets', [])]
+
+        example = SentenceSample(
+            id=f"synth_{i}",
+            sentence=item.get('text', ''),
+            triplets=triplets,
+            requested_schema = item.get('requested_schema')
+        )
+        examples.append(example)
+
+    return examples
+
+
+"""
+EVALUATION DATA LOADER
+"""
+# Load the data for the purpose of evaluation (automatically determine which function to use)
+def load_data_for_eval(data_path: str):
+    path = Path(data_path)
+
+    if "03_synthetic" in path.parts:
+        data = load_synthetic_fire_data(path)
+    elif "rebel" in path.name:    # Assume I want the sample as it takes too long otherwise
+        data = load_rebel_sample(path)
+    else:
+        data = load_processed_data(path)
+
+    sentences = [sample.sentence for sample in data]
+
+    return data, sentences
+
+
 def main():
     print('Loading data...')
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
     relations_path = Path("data") / "02_processed" / "fire_relation_types_processed.json"
 
-    data = load_processed_fire_data(data_path)
+    data = load_processed_data(data_path)
     relations = load_processed_fire_types(relations_path)
 
     print(relations)
     print(f"Sample 2: {data[1].sentence}")
     print(f"Sample 2: {data[1].triplets}")
 
-
-
-# Load the data for the purpose of evaluation (automatically determine which function to use)
-def load_data_for_eval(data_path: str):
-    path = Path(data_path)
-
-    # TODO: Update for better distinction, probably after the loading od data is refactored
-    if "03_synthetic" in path.parts:
-        data = load_synthetic_fire_data(path)
-    elif "fire" in path.name:
-        data = load_processed_fire_data(path)
-    elif "rebel" in path.name:
-        data = load_rebel_sample(path)
-    else:
-        data = load_processed_markdown_data(path)
-
-    sentences = [sample.sentence for sample in data]
-
-    return data, sentences
 
 if __name__ == "__main__":
     main()

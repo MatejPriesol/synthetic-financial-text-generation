@@ -7,7 +7,7 @@ from pathlib import Path
 from transformers import pipeline
 from dataclasses import asdict
 
-from src.data_loader import load_processed_markdown_data, Triplet
+from src.data_loader import load_processed_data, Triplet
 
 
 def parse_rebel_output(text):
@@ -65,7 +65,7 @@ def process_rebel_extraction(input_filepath, output_filepath, batch_size=16):
 
     # Load data
     print(f"Loading data from {input_filepath}...")
-    samples = load_processed_markdown_data(input_filepath)
+    samples = load_processed_data(input_filepath)
 
     print(f"Extracting triplets for {len(samples)} sentences...")
 
