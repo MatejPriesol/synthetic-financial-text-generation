@@ -93,9 +93,9 @@ def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
     max_scores, _ = torch.max(scores, dim=1)
     max_scores_list = max_scores.tolist()
 
-    duplicates_ratio = sum(1 for s in max_scores_list if s >= 0.98) * 100 / len(max_scores_list)
-    very_similar_ratio = sum(1 for s in max_scores_list if 0.85 <= s < 0.98) * 100 / len(max_scores_list)
-    different_ratio = sum(1 for s in max_scores_list if s < 0.85) * 100 / len(max_scores_list)
+    duplicates_percentage = sum(1 for s in max_scores_list if s >= 0.98) * 100 / len(max_scores_list)
+    very_similar_percentage = sum(1 for s in max_scores_list if 0.85 <= s < 0.98) * 100 / len(max_scores_list)
+    different_percentage = sum(1 for s in max_scores_list if s < 0.85) * 100 / len(max_scores_list)
 
     avg_closest = max_scores.mean().item()
     median_closest = max_scores.median().item()
@@ -108,9 +108,9 @@ def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
         "closest_match_similarity": {
             "avg_closest_match": round(avg_closest, 3),
             "median_closest_match": round(median_closest, 3),
-            "duplicates_ratio": round(duplicates_ratio, 3),
-            "very_similar_ratio": round(very_similar_ratio, 3),
-            "different_ratio": round(different_ratio, 3)
+            "duplicates_percentage": round(duplicates_percentage, 3),
+            "very_similar_percentage": round(very_similar_percentage, 3),
+            "different_percentage": round(different_percentage, 3)
         }
     }
 

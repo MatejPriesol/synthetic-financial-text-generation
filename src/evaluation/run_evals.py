@@ -55,27 +55,27 @@ def main():
     final_results = {
         "Overview": {
             "general": {
+                "run_name": args.run_name,
                 "dataset_size": len(sentences),
                 "device_used": device.upper(),
-                "dataset_path": args.data,
-                "run_name": args.run_name
+                "dataset_path": args.data
             }
         }
     }
 
     if args.all or args.perplexity:
         if args.verbose:
-            print("\n\n=== Running Perplexity ===\n")
+            print("\n\n=== Running Perplexity Evals  ===\n")
         else:
-            print("Running Perplexity...")
+            print("Running Perplexity Evals ...")
 
         final_results["Perplexity"] = run_all_perplexity(sentences, args.verbose)
 
     if args.all or args.grammar:
         if args.verbose:
-            print("\n\n=== Running Grammar ===\n")
+            print("\n\n=== Running Grammar Evals ===\n")
         else:
-            print("Running Grammar...")
+            print("Running Grammar Evals ...")
 
         final_results["Grammar"] = run_all_grammar(sentences, args.verbose)
 
