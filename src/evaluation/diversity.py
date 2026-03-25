@@ -43,7 +43,6 @@ def evaluate_ngrams_words(sentences, n=3, top_k=10, verbose=False):
 
 def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    #print(f"Using {device.upper()}")
 
     model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
     embeddings = model.encode(sentences, convert_to_tensor=True)
@@ -51,16 +50,15 @@ def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
 
     num_of_sentences = len(sentences)
 
+    # 1) Overall pairwise similarity:
     # Get the row and column indices for the upper triangle (offset skips the diagonal)
     row_idx, col_idx = torch.triu_indices(num_of_sentences, num_of_sentences, offset=1, device=device)
 
     # Get the scores
     pairwise_scores = scores[row_idx, col_idx]
-
     avg_score = pairwise_scores.mean().item()
 
     sorted_scores, sorted_indices = torch.sort(pairwise_scores, descending=True)
-
     sorted_scores_list = sorted_scores.tolist()
     sorted_rows = row_idx[sorted_indices].tolist()
     sorted_cols = col_idx[sorted_indices].tolist()
@@ -90,17 +88,39 @@ def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
         if count >= 10:
             break
 
+    # 2) Closest match similarity:
+    scores.fill_diagonal_(-1)  # Ignore self-matching
+    max_scores, _ = torch.max(scores, dim=1)
+    max_scores_list = max_scores.tolist()
+
+    duplicates_ratio = sum(1 for s in max_scores_list if s >= 0.98) * 100 / len(max_scores_list)
+    very_similar_ratio = sum(1 for s in max_scores_list if 0.85 <= s < 0.98) * 100 / len(max_scores_list)
+    different_ratio = sum(1 for s in max_scores_list if s < 0.85) * 100 / len(max_scores_list)
+
+    avg_closest = max_scores.mean().item()
+    median_closest = max_scores.median().item()
 
     return {
-        "avg_pairwise_sim": round(avg_score, 3),
-        f"percentage_above_{threshold}": round(100 * iterated / len(sorted_scores_list), 5)
-    }, scores
+        "all_pairs_similarity": {
+            "avg_pairwise_sim": round(avg_score, 3),
+            f"percentage_above_{threshold}": round(100 * iterated / len(sorted_scores_list), 5),
+        },
+        "closest_match_similarity": {
+            "avg_closest_match": round(avg_closest, 3),
+            "median_closest_match": round(median_closest, 3),
+            "duplicates_ratio": round(duplicates_ratio, 3),
+            "very_similar_ratio": round(very_similar_ratio, 3),
+            "different_ratio": round(different_ratio, 3)
+        }
+    }
 
 
 def run_all_diversity(sentences, verbose=False):
     module_results = {}
 
-    module_results["semantic"], _ = evaluate_semantic_similarity(sentences, verbose=verbose)
+    semantic_res = evaluate_semantic_similarity(sentences, verbose=verbose)
+    module_results.update(semantic_res)
+
     module_results["ngrams"] = evaluate_ngrams_words(sentences, verbose=verbose)
 
     return module_results
@@ -129,7 +149,7 @@ def main():
     if any(specific_flags):
         print("Running selected diversity evaluations...\n")
         if args.semantic:
-            local_results["semantic"], _ = evaluate_semantic_similarity(sentences, verbose=args.verbose)
+            local_results["semantic"] = evaluate_semantic_similarity(sentences, verbose=args.verbose)
         if args.ngrams:
             local_results["ngrams"] = evaluate_ngrams_words(sentences, verbose=args.verbose)
 

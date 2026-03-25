@@ -33,7 +33,14 @@ def main():
     # Save results
     parser.add_argument("--save", "-s", type=str, help="Save evaluation results. Provide the name of the file")
 
+    # Name for visualization purposes
+    parser.add_argument("--run_name", "-n", type=str, help="A short name for this experiment (Required if saving")
+
     args = parser.parse_args()
+
+    # Name required if the results are being saved
+    if args.save and not args.run_name:
+        parser.error("--run_name is required when --save is active!")
 
     print(f"Loading data from: {args.data}")
     data, sentences = load_data_for_eval(args.data)
@@ -50,7 +57,8 @@ def main():
             "general": {
                 "dataset_size": len(sentences),
                 "device_used": device.upper(),
-                "dataset_path": args.data
+                "dataset_path": args.data,
+                "run_name": args.run_name
             }
         }
     }
@@ -96,6 +104,7 @@ def main():
 
         # Iterate through the returned dictionaries and print them
         for sub_module, data in metrics.items():
+            print(f"\n  [{sub_module.replace('_', ' ').title()}]")
             for key, value in data.items():
                 clean_key = key.replace("_", " ").title()
 
