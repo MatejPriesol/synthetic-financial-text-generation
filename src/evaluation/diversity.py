@@ -4,10 +4,58 @@ import argparse
 import json
 
 from nltk.util import ngrams
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from sentence_transformers import SentenceTransformer, util
 from collections import Counter
 
 from src.data_loader import load_data_for_eval
+
+
+def evaluate_self_bleu(sentences, verbose=False):
+    tokenized_sentences = [nltk.word_tokenize(text.lower()) for text in sentences]
+    num_sentences = len(tokenized_sentences)
+
+    if num_sentences < 2:
+        return {"self_bleu_2": 0, "self_bleu_3": 0, "self_bleu_4": 0}
+
+    # Smoothing is required for sentence-level BLEU to avoid 0 scores on short sentences
+    chencherry = SmoothingFunction()
+
+    bleu_2_scores = []
+    bleu_3_scores = []
+    bleu_4_scores = []
+
+    if verbose:
+        print(f"Calculating Self-BLEU for {num_sentences} sentences (This may take a moment)...")
+
+    for i in range(num_sentences):
+        hypothesis = tokenized_sentences[i]
+        # References are all other sentences in the corpus
+        references = tokenized_sentences[:i] + tokenized_sentences[i+1:]
+
+        # Calculate BLEU-2, BLEU-3, and BLEU-4
+        b2 = sentence_bleu(references, hypothesis, weights=(0.5, 0.5, 0, 0), smoothing_function=chencherry.method1)
+        b3 = sentence_bleu(references, hypothesis, weights=(0.33, 0.33, 0.33, 0), smoothing_function=chencherry.method1)
+        b4 = sentence_bleu(references, hypothesis, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=chencherry.method1)
+
+        bleu_2_scores.append(b2)
+        bleu_3_scores.append(b3)
+        bleu_4_scores.append(b4)
+
+    avg_bleu_2 = sum(bleu_2_scores) / num_sentences
+    avg_bleu_3 = sum(bleu_3_scores) / num_sentences
+    avg_bleu_4 = sum(bleu_4_scores) / num_sentences
+
+    if verbose:
+        print(f"Average Self-BLEU-2: {avg_bleu_2:.4f}")
+        print(f"Average Self-BLEU-3: {avg_bleu_3:.4f}")
+        print(f"Average Self-BLEU-4: {avg_bleu_4:.4f}\n")
+
+    return {
+        "self_bleu_2": round(avg_bleu_2, 4),
+        "self_bleu_3": round(avg_bleu_3, 4),
+        "self_bleu_4": round(avg_bleu_4, 4)
+    }
 
 
 def evaluate_ngrams_words(sentences, n=3, top_k=10, verbose=False):
@@ -122,6 +170,7 @@ def run_all_diversity(sentences, verbose=False):
     module_results.update(semantic_res)
 
     module_results["ngrams"] = evaluate_ngrams_words(sentences, verbose=verbose)
+    module_results["self_bleu"] = evaluate_self_bleu(sentences, verbose=verbose)
 
     return module_results
 
@@ -133,6 +182,7 @@ def main():
     # Specific eval flags
     parser.add_argument("--semantic", action="store_true", help="Run only semantic analysis")
     parser.add_argument("--ngrams", action="store_true", help="Run only n-gram analysis")
+    parser.add_argument("--self_bleu", action="store_true", help="Run only Self-BLEU analysis")
 
     args = parser.parse_args()
 
@@ -140,7 +190,8 @@ def main():
 
     specific_flags = [
         args.semantic,
-        args.ngrams
+        args.ngrams,
+        args.self_bleu
     ]
 
     local_results = {}
@@ -152,6 +203,8 @@ def main():
             local_results["semantic"] = evaluate_semantic_similarity(sentences, verbose=args.verbose)
         if args.ngrams:
             local_results["ngrams"] = evaluate_ngrams_words(sentences, verbose=args.verbose)
+        if args.self_bleu:
+            local_results["self_bleu"] = evaluate_self_bleu(sentences, verbose=args.verbose)
 
     # If all specific flags are False, default to running everything
     else:

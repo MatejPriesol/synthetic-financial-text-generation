@@ -105,6 +105,21 @@ def evaluate_template_adherence(data, verbose=False):
         "total_matched": matched_count
     }
 
+
+def evaluate_surface_form_copying(data):
+    copied_count = 0
+    total = 0
+
+    for sample in data:
+        for triplet in sample.triplets:
+            total += 1
+            # Check if the exact relation string is in the sentence
+            if getattr(triplet, 'relation', '').lower() in getattr(sample, 'sentence', '').lower():
+                copied_count += 1
+
+    return round((copied_count / total) * 100, 2) if total > 0 else 0
+
+
 # Check if it contains the types (under the assumption that if the first one does, they all do) for the ontology
 def has_types_helper(data):
     if len(data) > 0 and len(data[0].triplets) > 0:
@@ -119,6 +134,7 @@ def run_all_statistical(data, verbose=False):
 
     if len(data) > 0 and getattr(data[0], 'requested_schema', None):
         results["template_adherence"] = evaluate_template_adherence(data, verbose=verbose)
+    results["surface_form_copying"] = evaluate_surface_form_copying(data)
 
     return results
 
