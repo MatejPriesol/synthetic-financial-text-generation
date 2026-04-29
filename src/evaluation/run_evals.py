@@ -9,6 +9,7 @@ from src.evaluation.perplexity import run_all_perplexity
 from src.evaluation.grammatical_correctness import run_all_grammar
 from src.evaluation.statistical import run_all_statistical
 from src.evaluation.diversity import run_all_diversity
+from src.evaluation.adequacy import run_all_adequacy
 
 
 # Silence Hugging Face's warnings
@@ -26,6 +27,7 @@ def main():
     parser.add_argument("--grammar", action="store_true", help="Run Grammar eval")
     parser.add_argument("--stats", action="store_true", help="Run Statistical evals")
     parser.add_argument("--diversity", action="store_true", help="Run Diversity evals")
+    parser.add_argument("--adequacy", action="store_true", help="Run Adequacy evals")
 
     # Include detailed prints
     parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed evaluation results")
@@ -85,7 +87,7 @@ def main():
         else:
             print("Running Statistical Evals...")
 
-        final_results["Statistical"] = run_all_statistical(data, args.verbose)
+        final_results["Statistical"] = run_all_statistical(data, args.save, args.verbose)
 
     if args.all or args.diversity:
         if args.verbose:
@@ -94,6 +96,15 @@ def main():
             print("Running Diversity Evals...")
 
         final_results["Diversity"] = run_all_diversity(sentences, args.verbose)
+
+    if args.all or args.adequacy:
+        if args.verbose:
+            print("\n\n=== Running Adequacy Evals ===\n")
+        else:
+            print("Running Adequacy Evals...")
+
+        final_results["Adequacy"] = run_all_adequacy(data, args.verbose)
+
 
     print("\n" + "=" * 50)
     print("RESULTS")

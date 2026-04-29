@@ -1,5 +1,9 @@
 import argparse
 import json
+import os
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from collections import Counter
 from src.data_loader import load_data_for_eval
@@ -61,64 +65,61 @@ def profile_ontology(data, include_types=False, top_n=10, verbose=False):
     }
 
 
-def evaluate_template_adherence(data, verbose=False):
-    matched_count = 0
-    total_valid_samples = 0
+def evaluate_triplet_density(data, save_plot_path=None, verbose=False):
+    triplet_counts = [len(getattr(sample, 'triplets', [])) for sample in data]
 
-    if verbose:
-        print("\n Template Adherence Mismatches:")
+    if not triplet_counts:
+        return {"error": "No valid triplets found in dataset"}
 
-    for sample in data:
-        req_schema = getattr(sample, 'requested_schema', None)
+    total_samples = len(triplet_counts)
 
-        # If this dataset wasn't generated with templates, skip it
-        if not req_schema:
-            continue
+    # Calculate statistics
+    avg_triplets = sum(triplet_counts) / total_samples
+    max_triplets = max(triplet_counts)
+    min_triplets = min(triplet_counts)
 
-        total_valid_samples += 1
+    raw_distribution = dict(Counter(triplet_counts))
 
-        # Reconstruct the generated schemas from the sample's triplets
-        gen_schemas = []
-        for t in sample.triplets:
-            s_type = getattr(t, 'subject_type', 'UNKNOWN')
-            o_type = getattr(t, 'object_type', 'UNKNOWN')
-            gen_schemas.append(f"[{s_type}] --({t.relation})--> [{o_type}]")
+    # Sort the dictionary by key
+    distribution = {k: raw_distribution[k] for k in sorted(raw_distribution)}
 
-        # Check if at least one of the triplets followed the schema
-        if req_schema in gen_schemas:
-            matched_count += 1
-        else:
-            if verbose:
-                print(f"FAILED:\n  Sentence:  {sample.sentence}")
-                print(f"  Requested: {req_schema}")
-                print(f"  Generated: {gen_schemas}\n")
-
-    # Calculate the final score
-    adherence_score = (matched_count / total_valid_samples) * 100 if total_valid_samples > 0 else 0
-
-    if verbose and 0 < total_valid_samples == matched_count:
-        print("100% Adherence, no mismatches found.\n")
-
-    return {
-        "adherence_percentage": round(adherence_score, 2),
-        "total_checked": total_valid_samples,
-        "total_matched": matched_count
+    # Calculate percentages for the JSON
+    distribution_percentages = {
+        f"{k}_triplets": round((v / total_samples) * 100, 2) for k, v in distribution.items()
     }
 
+    if verbose:
+        print(f"\n Triplet Density:")
+        print(f"  Average: {avg_triplets:.2f} | Max: {max_triplets}")
+        for k, v in distribution.items():
+            print(f"  {k} triplets: {v} sentences ({distribution_percentages[f'{k}_triplets']}%)")
 
-def evaluate_surface_form_copying(data):
-    copied_count = 0
-    total = 0
+    # Generate and save the plot silently
+    if save_plot_path:
+        # Ensure the output directory exists
+        os.makedirs(os.path.dirname(save_plot_path), exist_ok=True)
 
-    for sample in data:
-        for triplet in sample.triplets:
-            total += 1
-            # Check if the exact relation string is in the sentence
-            if getattr(triplet, 'relation', '').lower() in getattr(sample, 'sentence', '').lower():
-                copied_count += 1
+        plt.figure(figsize=(10, 5))
+        sns.histplot(triplet_counts, discrete=True, shrink=0.8, color="darkorange")
 
-    return round((copied_count / total) * 100, 2) if total > 0 else 0
+        plt.title("Distribution of Triplets per Sentence", fontsize=14, pad=15)
+        plt.xlabel("Number of Triplets", fontsize=12)
+        plt.ylabel("Frequency", fontsize=12)
+        plt.xticks(range(min_triplets, max_triplets + 1))
 
+        # Save the plot and close it to free up memory
+        plt.savefig(save_plot_path, bbox_inches='tight', dpi=300)
+        plt.close()
+
+        if verbose:
+            print(f"  Plot saved successfully to: {save_plot_path}")
+
+    return {
+        "average_triplets": round(avg_triplets, 2),
+        "max_triplets": max_triplets,
+        "raw_counts": distribution,
+        "percentages": distribution_percentages
+    }
 
 # Check if it contains the types (under the assumption that if the first one does, they all do) for the ontology
 def has_types_helper(data):
@@ -128,13 +129,17 @@ def has_types_helper(data):
         return bool(subject_type_val)
 
 
-def run_all_statistical(data, verbose=False):
+def run_all_statistical(data, save_name=None, verbose=False):
     results = {"entities": evaluate_obj_subj(data, verbose=verbose),
-            "ontology": profile_ontology(data, include_types=has_types_helper(data), verbose=verbose)}
+               "ontology": profile_ontology(data, include_types=has_types_helper(data), verbose=verbose)}
 
-    if len(data) > 0 and getattr(data[0], 'requested_schema', None):
-        results["template_adherence"] = evaluate_template_adherence(data, verbose=verbose)
-    results["surface_form_copying"] = evaluate_surface_form_copying(data)
+    plot_filepath = f"output/diversity_plots/{save_name}_triplet_density.png" if save_name else None
+
+    results["triplet_density"] = evaluate_triplet_density(
+        data,
+        save_plot_path=plot_filepath,
+        verbose=verbose
+    )
 
     return results
 
@@ -146,7 +151,7 @@ def main():
     # Specific eval flags
     parser.add_argument("--entities", action="store_true", help="Run only entity distribution")
     parser.add_argument("--ontology", action="store_true", help="Run only ontology profiling")
-    parser.add_argument("--template-adherence", action="store_true", help="Run only template adherence")
+    parser.add_argument("--triplet-density", action="store_true", help="Run triplet density eval")
 
     args = parser.parse_args()
 
@@ -155,7 +160,7 @@ def main():
     specific_flags = [
         args.entities,
         args.ontology,
-        args.template_adherence
+        args.triplet_density
     ]
 
     local_results = {}
@@ -167,8 +172,8 @@ def main():
             local_results["entities"] = evaluate_obj_subj(data, verbose=args.verbose)
         if args.ontology:
             local_results["ontology"] = profile_ontology(data, include_types=has_types_helper(data), verbose=args.verbose)
-        if args.template_adherence:
-            local_results["template_adherence"] = evaluate_template_adherence(data, verbose=args.verbose)
+        if args.triplet_density:
+            local_results["triplet_density"] = evaluate_triplet_density(data, verbose=args.verbose)
 
     # If all specific flags are False, default to running everything
     else:

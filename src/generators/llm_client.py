@@ -132,3 +132,38 @@ class LocalClient:
         except Exception as e:
             print(f"\n[!] Python Request Error: {e}")
             return None
+
+class LocalClientEval:
+    def __init__(self, model="qwen2.5:72b", temperature=0):
+        self.temperature = temperature
+        self.model = model
+        self.url = "http://localhost:11434/api/chat"
+
+    def generate_message(self, system_prompt, user_prompt):
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "stream": False,
+            "options": {
+                "temperature": self.temperature
+            }
+        }
+
+        try:
+            response = requests.post(self.url, json=payload)
+            response_data = response.json()
+
+            # Check for an error instead of a message
+            if "error" in response_data:
+                print(f"\n[!] OLLAMA API ERROR: {response_data['error']}")
+                return None
+
+            # If no error, return the message
+            return response_data["message"]["content"]
+
+        except Exception as e:
+            print(f"\n[!] Python Request Error: {e}")
+            return None
