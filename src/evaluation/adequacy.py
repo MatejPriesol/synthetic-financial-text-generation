@@ -59,7 +59,7 @@ def evaluate_llm_as_judge(data, verbose=False):
                 "object_type": getattr(triplet, 'object_type', 'UNKNOWN')
             }
 
-            score = get_g_eval_score(sentence, triplet_dict)
+            score = get_g_eval_score(triplet_dict, sentence)
 
             if score > 0:
                 sentence_triplet_scores.append(score)
@@ -139,7 +139,14 @@ def evaluate_surface_form_copying(data):
             if getattr(triplet, 'relation', '').lower() in getattr(sample, 'sentence', '').lower():
                 copied_count += 1
 
-    return round((copied_count / total) * 100, 2) if total > 0 else 0
+    # Calculate the float score
+    score = round((copied_count / total) * 100, 2) if total > 0 else 0
+
+    return {
+        "copying_percentage": score,
+        "total_relations_checked": total,
+        "total_copied_literally": copied_count
+    }
 
 
 def run_all_adequacy(data, verbose=False):
@@ -148,7 +155,7 @@ def run_all_adequacy(data, verbose=False):
     if len(data) > 0 and getattr(data[0], 'requested_schema', None):
         results["template_adherence"] = evaluate_template_adherence(data, verbose=verbose)
 
-    results["llm_judge"] = evaluate_llm_as_judge(data, verbose=verbose)
+    #results["llm_judge"] = evaluate_llm_as_judge(data, verbose=verbose)
     results["surface_form_copying"] = evaluate_surface_form_copying(data)
 
     return results
