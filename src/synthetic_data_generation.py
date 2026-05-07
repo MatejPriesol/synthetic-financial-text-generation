@@ -12,7 +12,7 @@ from src.generators.prompt_templates import PromptTemplates
 from src.data_loader import load_processed_data
 
 
-def build_ontology_schema(data, include_types=True, percentage_cutoff=2.0):
+def build_template_schema(data, include_types=True, percentage_cutoff=2.0):
     """Builds schemas based on semantic types."""
     schema_elements = []
     for sample in data:
@@ -74,20 +74,21 @@ def prepare_batch_prompts(strategy, data, allowed_schemas, schema_weights, sente
     chosen_schemas = []
     user_prompt = ""
 
-    if strategy in ["template", "entity"]:
+    if strategy == "template":
         chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
-        # TODO: Split entity prompt later if needed
-        user_prompt = PromptTemplates.generate_batch_from_template(chosen_schemas)
+        user_prompt = PromptTemplates.get_user_prompt_template(chosen_schemas)
+
+    elif strategy == "entity":
+        # TODO: Maybe change required with the sampling
+        chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
+        user_prompt = PromptTemplates.get_user_prompt_entity(chosen_schemas)
 
     elif strategy == "few-shot":
         few_shot_examples = sample_sentences(data, n=3)
-        # TODO: Add few-shot prompt template
-        # user_prompt = PromptTemplates.generate_few_shot_prompt(sentence_per_batch, few_shot_examples)
+        user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples)
 
     elif strategy == "zero-shot":
-        # TODO: Add zero-shot prompt template
-        # user_prompt = PromptTemplates.generate_zero_shot_prompt(sentence_per_batch)
-        pass
+        user_prompt = PromptTemplates.get_user_prompt_zero_shot(sentence_per_batch)
 
     return user_prompt, chosen_schemas
 
@@ -114,22 +115,30 @@ def main():
     # Finish setup relevant to strategy
     if args.strategy == "template":
         cutoff = args.cutoff if args.cutoff is not None else 2.0
-        allowed_schemas, schema_weights = build_ontology_schema(data, include_types=True, percentage_cutoff=cutoff)
-        system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
+        allowed_schemas, schema_weights = build_template_schema(data, include_types=True, percentage_cutoff=cutoff)
+        #system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
+        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
         file_name = args.output if args.output else "ontology_synthetic_data.json"
 
     elif args.strategy == "entity":
         cutoff = args.cutoff if args.cutoff is not None else 0.1
         allowed_schemas, schema_weights = build_entity_schema(data, percentage_cutoff=cutoff)
-        # TODO: Create a system prompt for entity-based approach
+        # TODO: Change so it uses the same allowed schemas, the sampling later will be from literal entities.
+        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
         file_name = args.output if args.output else "entity_synthetic_data.json"
 
     elif args.strategy == "few-shot":
-        # TODO: Create a system prompt for few-shot
+        cutoff = args.cutoff if args.cutoff is not None else 2.0
+        allowed_schemas, schema_weights = build_template_schema(data, include_types=True, percentage_cutoff=cutoff)
+        # system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
+        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
         file_name = args.output if args.output else "few-shot_synthetic_data.json"
 
     elif args.strategy == "zero-shot":
-        # TODO: Create a system prompt for zero-shot
+        cutoff = args.cutoff if args.cutoff is not None else 2.0
+        allowed_schemas, schema_weights = build_template_schema(data, include_types=True, percentage_cutoff=cutoff)
+        # system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
+        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
         file_name = args.output if args.output else "zero-shot_synthetic_data.json"
 
     output_file = output_dir / file_name
@@ -137,7 +146,7 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 250
+    num_of_batches = 10
     sentence_per_batch = 10
     all_generated_sentences = []
 
