@@ -12,7 +12,7 @@ from src.generators.prompt_templates import PromptTemplates
 from src.data_loader import load_processed_data
 
 
-def build_template_schema(data, include_types=True, percentage_cutoff=2.0):
+def build_system_prompt_schema(data, include_types=True, percentage_cutoff=2.0):
     """Builds schemas based on semantic types."""
     schema_elements = []
     for sample in data:
@@ -25,23 +25,7 @@ def build_template_schema(data, include_types=True, percentage_cutoff=2.0):
             else:
                 schema_elements.append(t.relation)
 
-    return _calculate_weights(schema_elements, percentage_cutoff, "Ontology Schema")
-
-def build_entity_schema(data, percentage_cutoff=0.1):
-    """Builds schemas based on literal entity names."""
-    schema_elements = []
-    for sample in data:
-        for t in sample.triplets:
-            # We use the actual text of the subject and object here
-            subject = getattr(t, 'subject', 'UNKNOWN')
-            obj = getattr(t, 'object', 'UNKNOWN')
-            signature = f"[{subject}] --({t.relation})--> [{obj}]"
-            schema_elements.append(signature)
-
-    return _calculate_weights(schema_elements, percentage_cutoff, "Entity Schema")
-
-def _calculate_weights(schema_elements, cutoff, name="Schema"):
-    """Helper function to calculate weights and apply cutoffs."""
+    # Calculate weights
     counts = Counter(schema_elements)
     num_of_elements = len(schema_elements)
 
@@ -50,11 +34,46 @@ def _calculate_weights(schema_elements, cutoff, name="Schema"):
 
     for element, count in counts.items():
         pct = (count / num_of_elements) * 100
-        if pct >= cutoff:
+        if pct >= percentage_cutoff:
             allowed_schemas.append(element)
             schema_weights.append(pct)
 
-    print(f"{name} Built: Kept {len(allowed_schemas)} unique signatures (Cutoff: {cutoff}%)")
+    print(f"System Prompt Schema Built: Kept {len(allowed_schemas)} unique signatures (Cutoff: {percentage_cutoff}%)")
+    return allowed_schemas, schema_weights
+
+
+def build_entity_schema(data, allowed_type_schemas, frequency_threshold=1):
+    """ Builds schemas based on literal entity names, strictly filtered by the allowed type-level ontology."""
+    schema_elements = []
+
+    for sample in data:
+        for t in sample.triplets:
+            # Reconstruct the Type-Level signature to check if it's allowed
+            s_type = getattr(t, 'subject_type', 'UNKNOWN')
+            o_type = getattr(t, 'object_type', 'UNKNOWN')
+            type_signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
+
+            # If the schema is in our allowed schemas, extract the literal entities
+            if type_signature in allowed_type_schemas:
+                subject = getattr(t, 'subject', 'UNKNOWN')
+                obj = getattr(t, 'object', 'UNKNOWN')
+
+                # Generate the entity signature that will be passed into the LLM
+                entity_signature = f"[{subject}] --({t.relation})--> [{obj}] (Ontology Schema: [{s_type}] --({t.relation})--> [{o_type}])"
+                schema_elements.append((entity_signature, type_signature))
+
+    # Calculate weights
+    counts = Counter(schema_elements)
+
+    allowed_schemas = []
+    schema_weights = []
+
+    for element, count in counts.items():
+        if count >= frequency_threshold:
+            allowed_schemas.append(element)
+            schema_weights.append(count)
+
+    print(f"Entity Schema Built: Kept {len(allowed_schemas)} unique literal signatures.")
     return allowed_schemas, schema_weights
 
 def sample_schemas(allowed_schemas, schema_weights, n=10):
@@ -79,9 +98,10 @@ def prepare_batch_prompts(strategy, data, allowed_schemas, schema_weights, sente
         user_prompt = PromptTemplates.get_user_prompt_template(chosen_schemas)
 
     elif strategy == "entity":
-        # TODO: Maybe change required with the sampling
         chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
-        user_prompt = PromptTemplates.get_user_prompt_entity(chosen_schemas)
+        # In case of entity strategy, the schemas are tuples containing the prompt string and evaluation string, extract the prompt
+        prompt_strings = [schema[0] for schema in chosen_schemas]
+        user_prompt = PromptTemplates.get_user_prompt_entity(prompt_strings)
 
     elif strategy == "few-shot":
         few_shot_examples = sample_sentences(data, n=3)
@@ -110,38 +130,17 @@ def main():
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    allowed_schemas, schema_weights, file_name, system_prompt = [], [], "", ""
-
-    # Finish setup relevant to strategy
-    if args.strategy == "template":
-        cutoff = args.cutoff if args.cutoff is not None else 2.0
-        allowed_schemas, schema_weights = build_template_schema(data, include_types=True, percentage_cutoff=cutoff)
-        #system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
-        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
-        file_name = args.output if args.output else "ontology_synthetic_data.json"
-
-    elif args.strategy == "entity":
-        cutoff = args.cutoff if args.cutoff is not None else 0.1
-        allowed_schemas, schema_weights = build_entity_schema(data, percentage_cutoff=cutoff)
-        # TODO: Change so it uses the same allowed schemas, the sampling later will be from literal entities.
-        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
-        file_name = args.output if args.output else "entity_synthetic_data.json"
-
-    elif args.strategy == "few-shot":
-        cutoff = args.cutoff if args.cutoff is not None else 2.0
-        allowed_schemas, schema_weights = build_template_schema(data, include_types=True, percentage_cutoff=cutoff)
-        # system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
-        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
-        file_name = args.output if args.output else "few-shot_synthetic_data.json"
-
-    elif args.strategy == "zero-shot":
-        cutoff = args.cutoff if args.cutoff is not None else 2.0
-        allowed_schemas, schema_weights = build_template_schema(data, include_types=True, percentage_cutoff=cutoff)
-        # system_prompt = PromptTemplates.get_system_prompt_with_fixed_templates()
-        system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
-        file_name = args.output if args.output else "zero-shot_synthetic_data.json"
-
+    # Get the system prompt with the list of most used triplets
+    cutoff = args.cutoff if args.cutoff is not None else 2.0
+    allowed_schemas, schema_weights = build_system_prompt_schema(data, include_types=True, percentage_cutoff=cutoff)
+    system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
+    file_name = args.output if args.output else f"{args.strategy}_synthetic_data.json"
     output_file = output_dir / file_name
+
+    # In case I am using the entity strategy, I need to pass the literal entities into the user prompt, so have to update the schemas
+    if args.strategy == "entity":
+        allowed_schemas, schema_weights = build_entity_schema(data, allowed_schemas, frequency_threshold=1)
+
 
     print("\n--------------------")
     print("Starting batch generation")
@@ -178,11 +177,17 @@ def main():
 
                 # Goal: embed the requested schema for eval purposes, relevant for template and entity
                 for j, item in enumerate(batch_data):
-                    if args.strategy in ["template", "entity"]:
+                    if args.strategy == "template":
                         # Ignore any sentences that go beyond the templates
                         if j >= len(chosen_schemas):
                             break
                         item["requested_schema"] = chosen_schemas[j]
+                    # In case of entity strategy, the chosen schemas is a tuple containing the prompt triplet and the eval triplet
+                    elif args.strategy == "entity":
+                        if j >= len(chosen_schemas):
+                            break
+                        item["requested_schema"] = chosen_schemas[j][1]
+                        item["requested_entity_fact"] = chosen_schemas[j][0]
                     else:
                         # Set to None so the template adherence won't run
                         item["requested_schema"] = None

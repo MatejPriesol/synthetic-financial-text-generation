@@ -137,23 +137,23 @@ class PromptTemplates:
         schema_list = "\n".join([f"{i + 1}. Template: {schema}" for i, schema in enumerate(schemas)])
 
         prompt_template = dedent("""
-                TASK: Generate a batch of {n} unique, highly realistic financial sentences.
+            TASK: Generate a batch of {n} unique, highly realistic financial sentences.
 
-                REQUIRED BATCH MAPPING:
-                You MUST follow this exact 1-to-1 mapping. Sentence 1 must be built around Template 1, Sentence 2 around Template 2, and so on. 
+            REQUIRED BATCH MAPPING:
+            You MUST follow this exact 1-to-1 mapping. Sentence 1 must be built around Template 1, Sentence 2 around Template 2, and so on. 
 
-                {schema_list}
+            {schema_list}
 
-                EXECUTION RULES:
-                1. LITERAL FACT INTEGRATION: The requested Template dictates the core factual foundation of your sentence. 
-                   - The text inside the brackets `[...]` are the EXACT literal entity names. You MUST include these exact strings in your English sentence.
-                   - The `(Types: ...)` at the end of the line is purely context to help you understand what those entities are. Do NOT write these type names in the English sentence.
-                2. COMPLEXITY: Naturally weave in additional valid facts using the Allowed Ontology from your system rules to meet the density requirements.
-                3. EXTREME DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
+            EXECUTION RULES:
+            1. LITERAL FACT INTEGRATION: The requested Template dictates the core factual foundation of your sentence. 
+               - The text inside the brackets `[...]` are the EXACT literal entity names. You MUST include these exact strings in your English sentence.
+               - The `(Ontology Schema: ...)` at the end of the line explicitly shows you which rule from the ALLOWED ONTOLOGY SCHEMAS this fact belongs to. Do NOT write this schema or the type names into the English sentence.
+            2. COMPLEXITY: Naturally weave in additional valid facts using the Allowed Ontology from your system rules to meet the density requirements.
+            3. EXTREME DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
                - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
-            """).strip()
+        """).strip()
 
         return prompt_template.format(n=n, schema_list=schema_list)
 
