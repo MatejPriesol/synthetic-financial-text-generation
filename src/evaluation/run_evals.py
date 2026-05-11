@@ -48,6 +48,10 @@ def main():
     data, sentences = load_data_for_eval(args.data)
     print(f"Loaded {len(sentences)} sentences.\n")
 
+    schema_path = "data/03_synthetic/allowed_schemas_cutoff_2.0%.json"
+    with open(schema_path, "r", encoding="utf-8") as f:
+        allowed_schemas = json.load(f)
+
     if args.verbose:
         print(f"Verbose flag enabled, detailed evaluation results will be printed.\n")
 
@@ -60,7 +64,8 @@ def main():
                 "run_name": args.run_name,
                 "dataset_size": len(sentences),
                 "device_used": device.upper(),
-                "dataset_path": args.data
+                "dataset_path": args.data,
+                "allowed_schemas": allowed_schemas
             }
         }
     }
@@ -103,7 +108,7 @@ def main():
         else:
             print("Running Adequacy Evals...")
 
-        final_results["Adequacy"] = run_all_adequacy(data, args.verbose)
+        final_results["Adequacy"] = run_all_adequacy(data, allowed_schemas, args.verbose)
 
 
     print("\n" + "=" * 50)

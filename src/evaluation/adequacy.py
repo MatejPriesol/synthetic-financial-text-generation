@@ -149,7 +149,39 @@ def evaluate_surface_form_copying(data):
     }
 
 
-def run_all_adequacy(data, verbose=False):
+def evaluate_schema_compliance(data, allowed_type_schemas):
+    total_triplets = 0
+    compliant_count = 0
+    hallucination_counts = {}
+
+    for sample in data:
+        for t in sample.triplets:
+            total_triplets += 1
+            s_type = getattr(t, 'subject_type', 'UNKNOWN')
+            o_type = getattr(t, 'object_type', 'UNKNOWN')
+
+            # Reconstruct the type signature
+            signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
+
+            if signature in allowed_type_schemas:
+                compliant_count += 1
+            else:
+                hallucination_counts[signature] = hallucination_counts.get(signature, 0) + 1
+
+    # Calculate percentage
+    score = round((compliant_count / total_triplets) * 100, 2) if total_triplets > 0 else 0
+    sorted_hallucinations = dict(sorted(hallucination_counts.items(), key=lambda item: item[1], reverse=True))
+
+    return {
+        "compliance_percentage": score,
+        "total_triplets_checked": total_triplets,
+        "total_compliant": compliant_count,
+        "total_hallucinated": total_triplets - compliant_count,
+        "hallucination_frequencies": sorted_hallucinations
+    }
+
+
+def run_all_adequacy(data, allowed_schemas, verbose=False):
     results = {}
 
     if len(data) > 0 and getattr(data[0], 'requested_schema', None):
@@ -157,6 +189,7 @@ def run_all_adequacy(data, verbose=False):
 
     #results["llm_judge"] = evaluate_llm_as_judge(data, verbose=verbose)
     results["surface_form_copying"] = evaluate_surface_form_copying(data)
+    results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas)
 
     return results
 
@@ -170,15 +203,21 @@ def main():
     parser.add_argument("--llm-judge", action="store_true", help="Run only LLM Judge")
     parser.add_argument("--template-adherence", action="store_true", help="Run only template adherence")
     parser.add_argument("--surface-form", action="store_true", help="Run surface form copying eval")
+    parser.add_argument("--schema-compliance", action="store_true", help="Run only schema compliance")
 
     args = parser.parse_args()
 
     data, sentences = load_data_for_eval(args.data)
 
+    schema_path = "data/03_synthetic/allowed_schemas_cutoff_2.0%.json"
+    with open(schema_path, "r", encoding="utf-8") as f:
+        allowed_schemas = json.load(f)
+
     specific_flags = [
         args.llm_judge,
         args.template_adherence,
-        args.surface_form
+        args.surface_form,
+        args.schema_compliance
     ]
 
     local_results = {}
@@ -192,12 +231,14 @@ def main():
             local_results["template_adherence"] = evaluate_template_adherence(data, verbose=args.verbose)
         if args.surface_form:
             local_results["surface_form_copying"] = evaluate_surface_form_copying(data)
+        if args.schema_compliance:
+            local_results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas)
 
 
     # If all specific flags are False, default to running everything
     else:
         print("No specific flags detected. Running all adequacy evaluations by default...\n")
-        local_results = run_all_adequacy(data, verbose=args.verbose)
+        local_results = run_all_adequacy(data, allowed_schemas, verbose=args.verbose)
 
     print("\n=== LOCAL RUN RESULTS ===")
     print(json.dumps(local_results, indent=2))
