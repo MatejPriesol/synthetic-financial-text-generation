@@ -84,12 +84,63 @@ def sample_schemas(allowed_schemas, schema_weights, n=10):
     )
     return sampled
 
+
+def get_valid_few_shot_pool(data, allowed_type_schemas):
+    """Filters the dataset to only include sentences where ALL triplets are allowed."""
+    valid_samples = []
+
+    for sample in data:
+        is_valid = True
+        for t in sample.triplets:
+            s_type = getattr(t, 'subject_type', 'UNKNOWN')
+            o_type = getattr(t, 'object_type', 'UNKNOWN')
+            type_signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
+
+            if type_signature not in allowed_type_schemas:
+                is_valid = False
+                break
+
+        # Only keep it if it's completely valid and actually has triplets
+        if is_valid and len(sample.triplets) > 0:
+            valid_samples.append(sample)
+
+    print(f"Few-Shot Pool Built: Kept {len(valid_samples)} strictly valid sentences out of {len(data)}.")
+    return valid_samples
+
+
+def sample_few_shot_examples(valid_pool, n=3):
+    """Samples valid sentences and formats them exactly how the LLM should output them."""
+    n = min(n, len(valid_pool))
+    sampled_objects = random.sample(valid_pool, k=n)
+
+    formatted_examples = []
+    for sample in sampled_objects:
+        # Build the exact dictionary structure expected by the system prompt
+        example_dict = {
+            "text": getattr(sample, 'sentence', ''),
+            "triplets": []
+        }
+
+        for t in sample.triplets:
+            example_dict["triplets"].append({
+                "subject": getattr(t, 'subject', ''),
+                "relation": getattr(t, 'relation', ''),
+                "object": getattr(t, 'object', ''),
+                "subject_type": getattr(t, 'subject_type', 'UNKNOWN'),
+                "object_type": getattr(t, 'object_type', 'UNKNOWN')
+            })
+
+        # Convert the dictionary to JSON string
+        formatted_examples.append(json.dumps(example_dict, indent=2))
+
+    return formatted_examples
+
 def sample_sentences(data, n=3):
     n = min(n, len(data))
     sampled_objects = random.sample(data, k=n)
     return [getattr(item, 'sentence', str(item)) for item in sampled_objects]
 
-def prepare_batch_prompts(strategy, data, allowed_schemas, schema_weights, sentence_per_batch):
+def prepare_batch_prompts(strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch):
     chosen_schemas = []
     user_prompt = ""
 
@@ -104,7 +155,7 @@ def prepare_batch_prompts(strategy, data, allowed_schemas, schema_weights, sente
         user_prompt = PromptTemplates.get_user_prompt_entity(prompt_strings)
 
     elif strategy == "few-shot":
-        few_shot_examples = sample_sentences(data, n=3)
+        few_shot_examples = sample_few_shot_examples(valid_pool, n=3)
         user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples)
 
     elif strategy == "zero-shot":
@@ -137,21 +188,29 @@ def main():
     file_name = args.output if args.output else f"{args.strategy}_synthetic_data.json"
     output_file = output_dir / file_name
 
+    schema_path = output_dir / f"allowed_schemas_cutoff_{cutoff}%.json"
+    with open(schema_path, "w", encoding="utf-8") as f:
+        json.dump(allowed_schemas, f, indent=4)
+
     # In case I am using the entity strategy, I need to pass the literal entities into the user prompt, so have to update the schemas
     if args.strategy == "entity":
         allowed_schemas, schema_weights = build_entity_schema(data, allowed_schemas, frequency_threshold=1)
+
+    valid_pool = data
+    if args.strategy == "few-shot":
+        valid_pool = get_valid_few_shot_pool(data, allowed_schemas)
 
 
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 10
+    num_of_batches = 50
     sentence_per_batch = 10
     all_generated_sentences = []
 
     if args.test:
         user_prompt, chosen_schemas = prepare_batch_prompts(
-            args.strategy, data, allowed_schemas, schema_weights, sentence_per_batch
+            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch
         )
 
         client.print_payload(system_prompt, user_prompt)
@@ -161,7 +220,7 @@ def main():
         for i in tqdm(range(num_of_batches)):
 
             user_prompt, chosen_schemas = prepare_batch_prompts(
-                args.strategy, data, allowed_schemas, schema_weights, sentence_per_batch
+                args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch
             )
 
             # Generate the message

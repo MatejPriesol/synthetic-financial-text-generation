@@ -189,7 +189,7 @@ class PromptTemplates:
             TASK: Generate a batch of {n} unique, highly realistic financial sentences.
 
             REFERENCE EXAMPLES (STYLE GUIDE):
-            Below are real examples from a financial dataset. Analyze their style, tone, and complexity. 
+            Below are real examples demonstrating the exact linguistic style, complexity, and JSON formatting. 
 
             {examples_formatted}
 
