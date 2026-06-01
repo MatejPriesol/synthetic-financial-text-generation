@@ -7,7 +7,7 @@ from tqdm import tqdm
 from pathlib import Path
 from collections import Counter
 
-from src.generators.llm_client import GroqClient
+from src.generators.llm_client import GroqClient, LocalClient
 from src.generators.prompt_templates import PromptTemplates
 from src.data_loader import load_processed_data
 
@@ -171,10 +171,17 @@ def main():
     parser.add_argument("--cutoff", type=float, default=None, help="Percentage cutoff for sampling")
     parser.add_argument("--output", "-o", type=str, help="Name for the json output file")
 
+    parser.add_argument("--provider", type=str, choices=["api", "local"], default="local", help="Which LLM provider to use")
+
     args = parser.parse_args()
 
     # Setup
-    client = GroqClient(temperature=1.3)
+    if args.provider == "api":
+        print("Using API provider")
+        client = GroqClient(temperature=1.3)
+    else:
+        print("Using local provider")
+        client = LocalClient(temperature=1.3)
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
     data = load_processed_data(data_path)
 
@@ -204,8 +211,8 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 50
-    sentence_per_batch = 10
+    num_of_batches = 1
+    sentence_per_batch = 2
     all_generated_sentences = []
 
     if args.test:
@@ -226,9 +233,12 @@ def main():
             # Generate the message
             response = client.generate_message(system_prompt, user_prompt)
 
-            # Ran out of the API keys and reached the rate limit, so break
+            # Ran out of the API keys and reached the rate limit, so break (or local connection failed)
             if response is None:
-                print(f"  [!] Used all the rate limits, stopping generation at batch {i+1}")
+                if args.provider == "api":
+                    print(f"  [!] Used all the rate limits, stopping generation at batch {i+1}")
+                else:
+                    print(f"  [!] Local connection failed, stopping generation at batch {i+1}")
                 break
 
             try:
@@ -255,7 +265,8 @@ def main():
             except json.JSONDecodeError as e:
                 print(f"  -> Failed to parse JSON for batch {i+1}")
 
-            time.sleep(2)
+            if args.provider == "api":
+                time.sleep(2)
 
     except KeyboardInterrupt:
         print("\n[!] Script manually stopped.")

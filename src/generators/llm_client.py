@@ -96,25 +96,47 @@ class GroqClient:
             print(message['content'])
         print("========================================\n")
 
-# Not usable right now, the models are not good enough
+
 class LocalClient:
     def __init__(self, temperature=1.3):
+        self.model = "llama3.3:70b"
         self.temperature = temperature
         self.url = "http://localhost:11434/api/chat"
 
-    def generate_message(self, system_prompt, user_prompt):
+    def test_connection(self):
+        print(f"Testing local Ollama connection for {self.model}...")
+        try:
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": "Hi"}],
+                "options": {"max_tokens": 1},
+                "stream": False
+            }
+            response = requests.post(self.url, json=payload, timeout=5)
+            if response.status_code == 200:
+                print("Connection Successful!")
+            else:
+                print(f"Connection Failed with status code: {response.status_code}")
+        except Exception as e:
+            print(f"Connection Failed: {e}")
+
+    def generate_message(self, system_prompt, prompt_part1, prompt_part2=None):
+        if prompt_part2:
+            full_user_msg = f"{prompt_part1}\n\n{prompt_part2}"
+        else:
+            full_user_msg = f"{prompt_part1}"
+
         payload = {
-            "model": "qwen2.5",
+            "model": self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": full_user_msg}
             ],
             "stream": False,
             "options": {
-                "temperature": self.temperature,
-                "num_gpu": 20
+                "temperature": self.temperature
             },
-            "format": "json"
+            #"format": "json"
         }
 
         try:
@@ -132,6 +154,24 @@ class LocalClient:
         except Exception as e:
             print(f"\n[!] Python Request Error: {e}")
             return None
+
+    def print_payload(self, system_prompt, prompt_part1, prompt_part2=None):
+        if prompt_part2:
+            full_user_msg = f"{prompt_part1}\n\n{prompt_part2}"
+        else:
+            full_user_msg = f"{prompt_part1}"
+
+        payload = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": full_user_msg}
+        ]
+
+        print(f"\n=== DEBUG: EXACT LOCAL PAYLOAD SENT TO {self.model.upper()} ===")
+        for message in payload:
+            print(f"\n[{message['role'].upper()}]")
+            print(message['content'])
+        print("========================================\n")
+
 
 class LocalClientEval:
     def __init__(self, model="qwen2.5:72b", temperature=0):
