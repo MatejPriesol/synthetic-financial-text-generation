@@ -32,6 +32,17 @@ class SentenceSample:
 RAW DATA LOADERS
 """
 
+def detokenize_sentence(tokens):
+    text = " ".join(tokens)
+
+    text = re.sub(r'\s+([.,!?;:])', r'\1', text)    # Remove spaces before common punctuation
+    text = re.sub(r'\s*-\s*', '-', text)    # Strip spaces surrounding hyphens
+    text = re.sub(r"\s+'\s*(s|t|re|ve|ll|d|m)\b", r"'\1", text)    # Remove spaces before contractions
+    text = re.sub(r'([(\[{])\s+', r'\1', text)    # Remove spaces before brackets
+    text = re.sub(r'\s+([)\]}])', r'\1', text)    # Remove spaces after brackets
+
+    return text.strip()
+
 def load_fire_data(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
@@ -39,7 +50,7 @@ def load_fire_data(filepath):
     all_samples = []
 
     for item in raw_data:
-        sentence = " ".join(item['tokens'])
+        sentence = detokenize_sentence(item['tokens'])
 
         entities = {i: ent for i, ent in enumerate(item['entities'])}
 
