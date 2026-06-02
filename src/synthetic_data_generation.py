@@ -2,6 +2,7 @@ import json
 import time
 import random
 import argparse
+import concurrent.futures
 
 from tqdm import tqdm
 from pathlib import Path
@@ -211,8 +212,8 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 1
-    sentence_per_batch = 2
+    num_of_batches = 10
+    sentence_per_batch = 10
     all_generated_sentences = []
 
     if args.test:
@@ -223,50 +224,65 @@ def main():
         client.print_payload(system_prompt, user_prompt)
         return
 
-    try:
-        for i in tqdm(range(num_of_batches)):
+    def process_batch():
+        # Prepare the prompt
+        user_prompt, chosen_schemas = prepare_batch_prompts(
+            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch
+        )
 
-            user_prompt, chosen_schemas = prepare_batch_prompts(
-                args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch
-            )
+        # Send payload to the model
+        response = client.generate_message(system_prompt, user_prompt)
 
-            # Generate the message
-            response = client.generate_message(system_prompt, user_prompt)
+        if response is None:
+            return []  # Return empty list if this specific call fails
 
-            # Ran out of the API keys and reached the rate limit, so break (or local connection failed)
-            if response is None:
-                if args.provider == "api":
-                    print(f"  [!] Used all the rate limits, stopping generation at batch {i+1}")
+        batch_results = []
+        try:
+            batch_data = json.loads(response)
+
+            # Assign schemas for evaluation based on strategy
+            for j, item in enumerate(batch_data):
+                if args.strategy == "template":
+                    # Ignore any sentences that go beyond the templates
+                    if j >= len(chosen_schemas):
+                        break
+                    item["requested_schema"] = chosen_schemas[j]
+                # In case of entity strategy, the chosen schemas is a tuple containing the prompt triplet and the eval triplet
+                elif args.strategy == "entity":
+                    if j >= len(chosen_schemas):
+                        break
+                    item["requested_schema"] = chosen_schemas[j][1]
+                    item["requested_entity_fact"] = chosen_schemas[j][0]
                 else:
-                    print(f"  [!] Local connection failed, stopping generation at batch {i+1}")
-                break
+                    # Set to None so the template adherence won't run
+                    item["requested_schema"] = None
 
-            try:
-                batch_data = json.loads(response)
+                batch_results.append(item)
 
-                # Goal: embed the requested schema for eval purposes, relevant for template and entity
-                for j, item in enumerate(batch_data):
-                    if args.strategy == "template":
-                        # Ignore any sentences that go beyond the templates
-                        if j >= len(chosen_schemas):
-                            break
-                        item["requested_schema"] = chosen_schemas[j]
-                    # In case of entity strategy, the chosen schemas is a tuple containing the prompt triplet and the eval triplet
-                    elif args.strategy == "entity":
-                        if j >= len(chosen_schemas):
-                            break
-                        item["requested_schema"] = chosen_schemas[j][1]
-                        item["requested_entity_fact"] = chosen_schemas[j][0]
-                    else:
-                        # Set to None so the template adherence won't run
-                        item["requested_schema"] = None
-                    all_generated_sentences.append(item)
+        except json.JSONDecodeError:
+            pass
 
-            except json.JSONDecodeError as e:
-                print(f"  -> Failed to parse JSON for batch {i+1}")
+        return batch_results
 
-            if args.provider == "api":
-                time.sleep(2)
+    max_workers = 10 if args.provider == "local" else 2
+
+    try:
+        # Launch the ThreadPoolExecutor
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all batches to the executor at once
+            futures = [executor.submit(process_batch) for _ in range(num_of_batches)]
+
+            # Wrap in tqdm to update the progress bar as they finish (not necessarily in order)
+            for future in tqdm(concurrent.futures.as_completed(futures), total=num_of_batches):
+                try:
+                    result = future.result()
+                    if result:
+                        all_generated_sentences.extend(result)
+                except Exception as exc:
+                    print(f"  [!] A batch generated an exception: {exc}")
+
+                if args.provider == "api":
+                    time.sleep(2)
 
     except KeyboardInterrupt:
         print("\n[!] Script manually stopped.")

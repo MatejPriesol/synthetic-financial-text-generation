@@ -134,7 +134,8 @@ class LocalClient:
             ],
             "stream": False,
             "options": {
-                "temperature": self.temperature
+                "temperature": self.temperature,
+                "num_ctx": 4096
             },
             #"format": "json"
         }
@@ -147,6 +148,10 @@ class LocalClient:
             if "error" in response_data:
                 print(f"\n[!] OLLAMA API ERROR: {response_data['error']}")
                 return None
+
+            #prompt_tokens = response_data.get("prompt_eval_count", 0)
+            #completion_tokens = response_data.get("eval_count", 0)
+            #print(f"  -> Local Usage: {prompt_tokens} Input Tokens | {completion_tokens} Output Tokens")
 
             # If no error, return the message
             return response_data["message"]["content"]
