@@ -12,6 +12,61 @@ from src.generators.llm_client import GroqClient, LocalClient
 from src.generators.prompt_templates import PromptTemplates
 from src.data_loader import load_processed_data
 
+from collections import defaultdict, Counter
+
+
+def build_template_sets_from_data(data, include_types=True, max_triplets=5):
+    """
+    Builds coherent schema templates by grouping triplets exactly as they
+    co-occurred in the original dataset sentences.
+    """
+    # Dictionary to hold Counters for each length: {1: Counter(), 2: Counter()...}
+    length_counters = defaultdict(Counter)
+
+    for sample in data:
+        signatures = []
+
+        # Build the individual triplet signatures for this sentence
+        for t in sample.triplets:
+            if include_types:
+                s_type = getattr(t, 'subject_type', 'UNKNOWN_TYPE')
+                o_type = getattr(t, 'object_type', 'UNKNOWN_TYPE')
+                sig = f"[{s_type}] --({t.relation})--> [{o_type}]"
+                signatures.append(sig)
+            else:
+                signatures.append(t.relation)
+
+        length = len(signatures)
+
+        # Only process sentences that have between 1 and max_triplets
+        if 1 <= length <= max_triplets:
+            # Sort them so (A, B) is counted as the same template as (B, A)
+            sorted_sigs = tuple(sorted(signatures))
+            length_counters[length][sorted_sigs] += 1
+
+    # Convert the raw counts into usable arrays with percentage weights
+    templates_by_length = {}
+
+    for length, counter in length_counters.items():
+        total_occurrences = sum(counter.values())
+
+        templates = []
+        weights = []
+
+        for template_tuple, count in counter.items():
+            templates.append(template_tuple)
+            # Calculate the probability weight (0.0 to 1.0)
+            weights.append(count / total_occurrences)
+
+        templates_by_length[length] = {
+            "templates": templates,
+            "weights": weights
+        }
+
+        print(f"Length {length}: Found {len(templates)} unique templates from {total_occurrences} sentences.")
+
+    return templates_by_length
+
 
 def build_system_prompt_schema(data, include_types=True, percentage_cutoff=2.0):
     """Builds schemas based on semantic types."""
@@ -141,13 +196,43 @@ def sample_sentences(data, n=3):
     sampled_objects = random.sample(data, k=n)
     return [getattr(item, 'sentence', str(item)) for item in sampled_objects]
 
-def prepare_batch_prompts(strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch):
+def sample_grouped_schemas(grouped_templates, n=10):
+    """
+    Samples a batch of template sets using the true length distribution
+    from the FIRE dataset.
+    """
+    # The true distribution of lengths from the FIRE dataset
+    length_options = [1, 2, 3, 4, 5]
+    length_weights = [30.5, 26.8, 20.2, 14.6, 8.0]
+
+    # 1. Decide the architecture (number of triplets) for the n sentences
+    chosen_lengths = random.choices(length_options, weights=length_weights, k=n)
+
+    sampled_tuples = []
+
+    # 2. Pick the specific grouped templates for those lengths
+    for target_length in chosen_lengths:
+        pool = grouped_templates.get(target_length)
+
+        # Fallback just in case a length is missing (though our dict has 1-5)
+        if not pool:
+            continue
+
+        # Pick ONE template tuple based on the real co-occurrence weights
+        chosen_template_tuple = random.choices(pool["templates"], weights=pool["weights"], k=1)[0]
+        sampled_tuples.append(chosen_template_tuple)
+
+    return sampled_tuples
+
+def prepare_batch_prompts(strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, grouped_templates):
     chosen_schemas = []
     user_prompt = ""
 
     if strategy == "template":
-        chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
-        user_prompt = PromptTemplates.get_user_prompt_template(chosen_schemas)
+        #chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
+        # user_prompt = PromptTemplates.get_user_prompt_template(chosen_schemas)
+        chosen_schemas = sample_grouped_schemas(grouped_templates, n=sentence_per_batch)
+        user_prompt = PromptTemplates.get_user_prompt_template_new(chosen_schemas)
 
     elif strategy == "entity":
         chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
@@ -212,13 +297,16 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 10
+    num_of_batches = 50
     sentence_per_batch = 10
     all_generated_sentences = []
 
+    templates_by_length = build_template_sets_from_data(data)
+
     if args.test:
+
         user_prompt, chosen_schemas = prepare_batch_prompts(
-            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch
+            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, templates_by_length
         )
 
         client.print_payload(system_prompt, user_prompt)
@@ -227,7 +315,7 @@ def main():
     def process_batch():
         # Prepare the prompt
         user_prompt, chosen_schemas = prepare_batch_prompts(
-            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch
+            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, templates_by_length
         )
 
         # Send payload to the model

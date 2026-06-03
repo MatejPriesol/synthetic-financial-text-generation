@@ -81,10 +81,9 @@ class PromptTemplates:
             Your task is to generate highly realistic, complex financial news sentences paired with their exact relation triplets.
         
             CRITICAL RULES:
-            1. TRIPLET DENSITY: Vary the complexity of your generated sentences to mimic real-world text. Generate a diverse mix: some should be simple single-triplet sentences, most should contain 2 to 3 triplets, and occasionally you should write highly complex sentences containing up to 7 triplets.
-            2. FLUENT ENGLISH ONLY: NEVER insert the raw relation tokens (e.g., 'Actionto', 'actionin') into the English sentence. You MUST express the relationship using natural, fluent English phrasing.
-            3. EXACT MATCHING: The 'subject' and 'object' values in your JSON MUST be exact substrings extracted from your generated sentence.
-            4. STRICT ONTOLOGY: You may ONLY use the exact [SubjectType] --(Relation)--> [ObjectType] combinations listed below. Do not invent relations or mix types.
+            1. FLUENT ENGLISH ONLY: NEVER insert the raw relation tokens (e.g., 'Actionto', 'actionin') into the English sentence. You MUST express the relationship using natural, fluent English phrasing.
+            2. EXACT MATCHING: The 'subject' and 'object' values in your JSON MUST be exact substrings extracted from your generated sentence.
+            3. STRICT ONTOLOGY: You may ONLY use the exact [SubjectType] --(Relation)--> [ObjectType] combinations listed below. Do not invent relations or mix types.
         
             JSON FORMAT:
             Output ONLY a valid JSON array. Do not include markdown blocks, explanations, or conversational text.
@@ -103,8 +102,6 @@ class PromptTemplates:
               }}
             ]
         
-            ALLOWED ONTOLOGY SCHEMAS:
-            {schemas_formatted}
         """).strip()
 
         return prompt_template.format(schemas_formatted=schemas_formatted)
@@ -177,6 +174,37 @@ class PromptTemplates:
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
                - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
+        """).strip()
+
+        return prompt_template.format(n=n, schema_list=schema_list)
+
+    @staticmethod
+    def get_user_prompt_template_new(schemas):
+        n = len(schemas)
+
+        # Format the tuples into a comma-separated string for the prompt
+        schema_lines = []
+        for i, schema_tuple in enumerate(schemas):
+            joined_triplets = ", ".join(schema_tuple)
+            schema_lines.append(f"{i + 1}. Template Set: {joined_triplets}")
+
+        schema_list = "\n".join(schema_lines)
+
+        prompt_template = dedent("""
+            TASK: Generate a batch of {n} unique, highly realistic financial sentences.
+
+            REQUIRED BATCH MAPPING:
+            You MUST follow this exact 1-to-1 mapping. Sentence 1 must be built around Template Set 1, Sentence 2 around Template Set 2, and so on. 
+
+            {schema_list}
+
+            EXECUTION RULES:
+            1. TEMPLATE INTEGRATION: The requested Template Set contains one or more relation triplets. You MUST use ALL triplets in the assigned set as the core factual foundation of the sentence. 
+               - You do NOT need to present the facts in the exact order they are listed. 
+               - Integrate them so the semantic meaning is naturally woven together into a single, cohesive sentence.
+            2. EXTREME DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
+               - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
+               - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
         """).strip()
 
         return prompt_template.format(n=n, schema_list=schema_list)
