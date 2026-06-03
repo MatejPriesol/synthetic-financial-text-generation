@@ -3,6 +3,8 @@ import argparse
 import json
 import os
 
+from collections import Counter
+
 from src.data_loader import load_data_for_eval
 from src.generators.llm_client import LocalClientEval
 from src.generators.prompt_templates import PromptTemplates
@@ -84,47 +86,65 @@ def evaluate_llm_as_judge(data, verbose=False):
 
 
 def evaluate_template_adherence(data, verbose=False):
-    matched_count = 0
-    total_valid_samples = 0
+    # Sentence-level trackers (Strict)
+    sentence_match_count = 0
+    total_valid_sentences = 0
+
+    # Triplet-level trackers (Granular)
+    total_requested_triplets = 0
+    total_matched_triplets = 0
 
     if verbose:
         print("\n Template Adherence Mismatches:")
 
     for sample in data:
-        req_schema = getattr(sample, 'requested_schema', None)
+        req_schemas = getattr(sample, 'requested_schema', None)
 
-        # If this dataset wasn't generated with templates, skip it
-        if not req_schema:
+        if not req_schemas:
             continue
 
-        total_valid_samples += 1
+        if isinstance(req_schemas, str):
+            req_schemas = [req_schemas]
 
-        # Reconstruct the generated schemas from the sample's triplets
+        total_valid_sentences += 1
+        total_requested_triplets += len(req_schemas)
+
         gen_schemas = []
         for t in sample.triplets:
             s_type = getattr(t, 'subject_type', 'UNKNOWN')
             o_type = getattr(t, 'object_type', 'UNKNOWN')
             gen_schemas.append(f"[{s_type}] --({t.relation})--> [{o_type}]")
 
-        # Check if at least one of the triplets followed the schema
-        if req_schema in gen_schemas:
-            matched_count += 1
+        req_counter = Counter(req_schemas)
+        gen_counter = Counter(gen_schemas)
+
+        # 1. Triplet-Level Math: How many of the specific requested triplets were found?
+        # We use min() so if it generates 3 Quantity schemas but we only asked for 2, it only scores 2.
+        matched_in_this_sentence = sum(min(gen_counter[schema], req_count) for schema, req_count in req_counter.items())
+        total_matched_triplets += matched_in_this_sentence
+
+        # 2. Sentence-Level Math: Did it get ALL of them?
+        is_strict_match = all(gen_counter[schema] >= count for schema, count in req_counter.items())
+
+        if is_strict_match:
+            sentence_match_count += 1
         else:
             if verbose:
-                print(f"FAILED:\n  Sentence:  {sample.sentence}")
-                print(f"  Requested: {req_schema}")
+                sentence_text = getattr(sample, 'sentence', getattr(sample, 'text', 'Unknown Text'))
+                print(f"FAILED (Got {matched_in_this_sentence}/{len(req_schemas)}):\n  Sentence:  {sentence_text}")
+                print(f"  Requested: {req_schemas}")
                 print(f"  Generated: {gen_schemas}\n")
 
-    # Calculate the final score
-    adherence_score = (matched_count / total_valid_samples) * 100 if total_valid_samples > 0 else 0
-
-    if verbose and 0 < total_valid_samples == matched_count:
-        print("100% Adherence, no mismatches found.\n")
+    # Calculate final percentages
+    strict_score = (sentence_match_count / total_valid_sentences) * 100 if total_valid_sentences > 0 else 0
+    yield_score = (total_matched_triplets / total_requested_triplets) * 100 if total_requested_triplets > 0 else 0
 
     return {
-        "adherence_percentage": round(adherence_score, 2),
-        "total_checked": total_valid_samples,
-        "total_matched": matched_count
+        "strict_sentence_adherence": round(strict_score, 2),
+        "triplet_yield_percentage": round(yield_score, 2),
+        "total_sentences_checked": total_valid_sentences,
+        "total_triplets_requested": total_requested_triplets,
+        "total_triplets_matched": total_matched_triplets
     }
 
 
