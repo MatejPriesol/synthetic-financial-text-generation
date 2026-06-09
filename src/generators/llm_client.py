@@ -73,7 +73,7 @@ class GroqClient:
                 error_msg = str(e)
                 if "429" in error_msg:
                     self.rotate_key()
-                    time.sleep(2)
+                    time.sleep(1)
                 else:
                     print(f"\n  [!] Groq API Error: {e}")
                     return None

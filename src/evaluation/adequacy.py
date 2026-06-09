@@ -140,8 +140,8 @@ def evaluate_template_adherence(data, verbose=False):
     yield_score = (total_matched_triplets / total_requested_triplets) * 100 if total_requested_triplets > 0 else 0
 
     return {
-        "strict_sentence_adherence": round(strict_score, 2),
-        "triplet_yield_percentage": round(yield_score, 2),
+        "Per_sentence_percentage": round(strict_score, 2),
+        "Per_triplet_percentage": round(yield_score, 2),
         "total_sentences_checked": total_valid_sentences,
         "total_triplets_requested": total_requested_triplets,
         "total_triplets_matched": total_matched_triplets

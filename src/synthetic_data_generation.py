@@ -226,28 +226,33 @@ def sample_grouped_schemas(grouped_templates, n=10):
 
 def prepare_batch_prompts(strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, grouped_templates):
     chosen_schemas = []
+    system_prompt = ""
     user_prompt = ""
 
     if strategy == "template":
         #chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
         # user_prompt = PromptTemplates.get_user_prompt_template(chosen_schemas)
+        system_prompt = PromptTemplates.get_system_prompt_template()
         chosen_schemas = sample_grouped_schemas(grouped_templates, n=sentence_per_batch)
         user_prompt = PromptTemplates.get_user_prompt_template_new(chosen_schemas)
 
     elif strategy == "entity":
         chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
         # In case of entity strategy, the schemas are tuples containing the prompt string and evaluation string, extract the prompt
+        system_prompt = PromptTemplates.get_system_prompt_entity()
         prompt_strings = [schema[0] for schema in chosen_schemas]
         user_prompt = PromptTemplates.get_user_prompt_entity(prompt_strings)
 
     elif strategy == "few-shot":
         few_shot_examples = sample_few_shot_examples(valid_pool, n=3)
+        system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_schemas)
         user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples)
 
     elif strategy == "zero-shot":
+        system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_schemas)
         user_prompt = PromptTemplates.get_user_prompt_zero_shot(sentence_per_batch)
 
-    return user_prompt, chosen_schemas
+    return system_prompt, user_prompt, chosen_schemas
 
 def main():
     parser = argparse.ArgumentParser(description="Synthetic Data Generator")
@@ -277,7 +282,7 @@ def main():
     # Get the system prompt with the list of most used triplets
     cutoff = args.cutoff if args.cutoff is not None else 2.0
     allowed_schemas, schema_weights = build_system_prompt_schema(data, include_types=True, percentage_cutoff=cutoff)
-    system_prompt = PromptTemplates.get_system_prompt_universal(allowed_schemas)
+    #system_prompt = PromptTemplates.get_system_prompt_template()
     file_name = args.output if args.output else f"{args.strategy}_synthetic_data.json"
     output_file = output_dir / file_name
 
@@ -297,7 +302,7 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 50
+    num_of_batches = 10
     sentence_per_batch = 10
     all_generated_sentences = []
 
@@ -305,7 +310,7 @@ def main():
 
     if args.test:
 
-        user_prompt, chosen_schemas = prepare_batch_prompts(
+        system_prompt, user_prompt, chosen_schemas = prepare_batch_prompts(
             args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, templates_by_length
         )
 
@@ -314,7 +319,7 @@ def main():
 
     def process_batch():
         # Prepare the prompt
-        user_prompt, chosen_schemas = prepare_batch_prompts(
+        system_prompt, user_prompt, chosen_schemas = prepare_batch_prompts(
             args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, templates_by_length
         )
 
