@@ -317,7 +317,7 @@ def main():
         client.print_payload(system_prompt, user_prompt)
         return
 
-    def process_batch():
+    def process_batch(i):
         # Prepare the prompt
         system_prompt, user_prompt, chosen_schemas = prepare_batch_prompts(
             args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, templates_by_length
@@ -332,6 +332,9 @@ def main():
         batch_results = []
         try:
             batch_data = json.loads(response)
+
+            if isinstance(batch_data, dict):
+                batch_data = [batch_data]
 
             # Assign schemas for evaluation based on strategy
             for j, item in enumerate(batch_data):
@@ -353,6 +356,7 @@ def main():
                 batch_results.append(item)
 
         except json.JSONDecodeError:
+            print(f"  -> Failed to parse JSON for batch {i+1}")
             pass
 
         return batch_results
@@ -363,7 +367,7 @@ def main():
         # Launch the ThreadPoolExecutor
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all batches to the executor at once
-            futures = [executor.submit(process_batch) for _ in range(num_of_batches)]
+            futures = [executor.submit(process_batch, i) for i in range(num_of_batches)]
 
             # Wrap in tqdm to update the progress bar as they finish (not necessarily in order)
             for future in tqdm(concurrent.futures.as_completed(futures), total=num_of_batches):
@@ -374,8 +378,8 @@ def main():
                 except Exception as exc:
                     print(f"  [!] A batch generated an exception: {exc}")
 
-                if args.provider == "api":
-                    time.sleep(2)
+                #if args.provider == "api":
+                    #time.sleep(2)
 
     except KeyboardInterrupt:
         print("\n[!] Script manually stopped.")

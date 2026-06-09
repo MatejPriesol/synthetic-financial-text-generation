@@ -2,6 +2,7 @@ import torch
 import nltk
 import argparse
 import json
+import random
 
 from nltk.util import ngrams
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
@@ -11,7 +12,7 @@ from collections import Counter
 from src.data_loader import load_data_for_eval
 
 
-def evaluate_self_bleu(sentences, verbose=False):
+def evaluate_self_bleu(sentences, num_hypothesis_to_test=200, verbose=False):
     tokenized_sentences = [nltk.word_tokenize(text.lower()) for text in sentences]
     num_sentences = len(tokenized_sentences)
 
@@ -25,12 +26,18 @@ def evaluate_self_bleu(sentences, verbose=False):
     bleu_3_scores = []
     bleu_4_scores = []
 
-    if verbose:
-        print(f"Calculating Self-BLEU for {num_sentences} sentences (This may take a moment)...")
+    # Limit the number of hypotheses we test to speed up the loop
+    actual_test_size = min(num_hypothesis_to_test, num_sentences)
 
-    for i in range(num_sentences):
+    if verbose:
+        print(f"Calculating Self-BLEU for {actual_test_size} sentences (This may take a moment)...")
+
+    hypothesis_indices = random.sample(range(num_sentences), actual_test_size)
+
+    for i in hypothesis_indices:
         hypothesis = tokenized_sentences[i]
-        # References are all other sentences in the corpus
+
+        # All available references except the current sentence
         references = tokenized_sentences[:i] + tokenized_sentences[i+1:]
 
         # Calculate BLEU-2, BLEU-3, and BLEU-4
@@ -42,9 +49,9 @@ def evaluate_self_bleu(sentences, verbose=False):
         bleu_3_scores.append(b3)
         bleu_4_scores.append(b4)
 
-    avg_bleu_2 = sum(bleu_2_scores) / num_sentences
-    avg_bleu_3 = sum(bleu_3_scores) / num_sentences
-    avg_bleu_4 = sum(bleu_4_scores) / num_sentences
+    avg_bleu_2 = sum(bleu_2_scores) / actual_test_size
+    avg_bleu_3 = sum(bleu_3_scores) / actual_test_size
+    avg_bleu_4 = sum(bleu_4_scores) / actual_test_size
 
     if verbose:
         print(f"Average Self-BLEU-2: {avg_bleu_2:.4f}")
