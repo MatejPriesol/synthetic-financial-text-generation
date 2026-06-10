@@ -132,6 +132,68 @@ def build_entity_schema(data, allowed_type_schemas, frequency_threshold=1):
     print(f"Entity Schema Built: Kept {len(allowed_schemas)} unique literal signatures.")
     return allowed_schemas, schema_weights
 
+
+def build_global_entity_triplet_pool(data, allowed_type_schemas, pool_size=500):
+    """
+    Extracts literal triplet facts that conform to the allowed type ontology,
+    counts their frequencies, and returns the top 'pool_size' elements with weights.
+    """
+    literal_triplets = []
+
+    for sample in data:
+        for t in sample.triplets:
+            s_type = getattr(t, 'subject_type', 'UNKNOWN')
+            o_type = getattr(t, 'object_type', 'UNKNOWN')
+            type_signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
+
+            # Only track if it matches our 16 allowed ontological paths
+            if type_signature in allowed_type_schemas:
+                subject = getattr(t, 'subject', 'UNKNOWN')
+                obj = getattr(t, 'object', 'UNKNOWN')
+
+                # Save the complete literal fact with its types
+                literal_fact = (subject, t.relation, obj, s_type, o_type)
+                literal_triplets.append(literal_fact)
+
+    # Get the top X most frequent literal facts
+    counts = Counter(literal_triplets)
+    top_elements = counts.most_common(pool_size)
+
+    global_pool = [element for element, count in top_elements]
+    # Calculate weights based on frequency counts
+    total_counts = sum(count for element, count in top_elements)
+    global_weights = [count / total_counts for element, count in top_elements]
+
+    print(f"Entity Strategy: Built a global pool of {len(global_pool)} unique literal facts.")
+    return global_pool, global_weights
+
+def sample_and_format_entity_pool(entity_pool, entity_weights, n_facts_to_sample=20):
+    """
+    Samples a set of connected literal facts from the global pool,
+    strips the relations, and groups unique entities by their types
+    into a clean string for the LLM user prompt.
+    """
+    # Sample literal facts based on their frequency weights
+    sampled_facts = random.choices(entity_pool, weights=entity_weights, k=n_facts_to_sample)
+
+    # Group unique literal entities by their types
+    type_to_entities = defaultdict(set)
+    for subject, relation, obj, s_type, o_type in sampled_facts:
+        type_to_entities[s_type].add(subject)
+        type_to_entities[o_type].add(obj)
+
+    # Format into a clean string for the prompt
+    formatted_lines = []
+    for entity_type, entities in type_to_entities.items():
+        # Convert set to a sorted list for consistent prompting
+        entity_list = sorted(list(entities))
+        formatted_lines.append(f"- {entity_type}: {entity_list}")
+
+    # Return both the prompt string and the underlying facts (for downstream evaluation)
+    prompt_string = "\n".join(formatted_lines)
+    return prompt_string, sampled_facts
+
+
 def sample_schemas(allowed_schemas, schema_weights, n=10):
     sampled = random.choices(
         population=allowed_schemas,
@@ -224,7 +286,7 @@ def sample_grouped_schemas(grouped_templates, n=10):
 
     return sampled_tuples
 
-def prepare_batch_prompts(strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, grouped_templates):
+def prepare_batch_prompts(strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, grouped_templates, entity_pool, entity_weights):
     chosen_schemas = []
     system_prompt = ""
     user_prompt = ""
@@ -237,19 +299,18 @@ def prepare_batch_prompts(strategy, valid_pool, allowed_schemas, schema_weights,
         user_prompt = PromptTemplates.get_user_prompt_template_new(chosen_schemas)
 
     elif strategy == "entity":
-        chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
-        # In case of entity strategy, the schemas are tuples containing the prompt string and evaluation string, extract the prompt
-        system_prompt = PromptTemplates.get_system_prompt_entity()
-        prompt_strings = [schema[0] for schema in chosen_schemas]
-        user_prompt = PromptTemplates.get_user_prompt_entity(prompt_strings)
+        system_prompt = PromptTemplates.get_system_prompt_entity(allowed_ontology)
+        pool_string, underlying_facts = sample_and_format_entity_pool(entity_pool, entity_weights, n_facts_to_sample=20)
+        user_prompt = PromptTemplates.get_user_prompt_entity(pool_string)
+        chosen_schemas = underlying_facts
 
     elif strategy == "few-shot":
         few_shot_examples = sample_few_shot_examples(valid_pool, n=3)
-        system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_schemas)
+        system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_ontology)
         user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples)
 
     elif strategy == "zero-shot":
-        system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_schemas)
+        system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_ontology)
         user_prompt = PromptTemplates.get_user_prompt_zero_shot(sentence_per_batch)
 
     return system_prompt, user_prompt, chosen_schemas
@@ -278,25 +339,24 @@ def main():
 
     output_dir = Path("data") / "03_synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Get the system prompt with the list of most used triplets
-    cutoff = args.cutoff if args.cutoff is not None else 2.0
-    allowed_schemas, schema_weights = build_system_prompt_schema(data, include_types=True, percentage_cutoff=cutoff)
-    #system_prompt = PromptTemplates.get_system_prompt_template()
     file_name = args.output if args.output else f"{args.strategy}_synthetic_data.json"
     output_file = output_dir / file_name
 
+    # Get the system prompt with the list of most used triplets
+    cutoff = args.cutoff if args.cutoff is not None else 2.0
+    allowed_ontology, schema_weights = build_system_prompt_schema(data, include_types=True, percentage_cutoff=cutoff)
+
     schema_path = output_dir / f"allowed_schemas_cutoff_{cutoff}%.json"
     with open(schema_path, "w", encoding="utf-8") as f:
-        json.dump(allowed_schemas, f, indent=4)
+        json.dump(allowed_ontology, f, indent=4)
 
-    # In case I am using the entity strategy, I need to pass the literal entities into the user prompt, so have to update the schemas
+    entity_pool, entity_weights = [], []
     if args.strategy == "entity":
-        allowed_schemas, schema_weights = build_entity_schema(data, allowed_schemas, frequency_threshold=1)
+        entity_pool, entity_weights = build_global_entity_triplet_pool(data, allowed_ontology, pool_size=500)
 
     valid_pool = data
     if args.strategy == "few-shot":
-        valid_pool = get_valid_few_shot_pool(data, allowed_schemas)
+        valid_pool = get_valid_few_shot_pool(data, allowed_ontology)
 
 
     print("\n--------------------")
@@ -311,7 +371,7 @@ def main():
     if args.test:
 
         system_prompt, user_prompt, chosen_schemas = prepare_batch_prompts(
-            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, templates_by_length
+            args.strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, templates_by_length, entity_pool, entity_weights
         )
 
         client.print_payload(system_prompt, user_prompt)
@@ -320,7 +380,7 @@ def main():
     def process_batch(i):
         # Prepare the prompt
         system_prompt, user_prompt, chosen_schemas = prepare_batch_prompts(
-            args.strategy, valid_pool, allowed_schemas, schema_weights, sentence_per_batch, templates_by_length
+            args.strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, templates_by_length, entity_pool, entity_weights
         )
 
         # Send payload to the model

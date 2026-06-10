@@ -118,12 +118,11 @@ def evaluate_template_adherence(data, verbose=False):
         req_counter = Counter(req_schemas)
         gen_counter = Counter(gen_schemas)
 
-        # 1. Triplet-Level Math: How many of the specific requested triplets were found?
-        # We use min() so if it generates 3 Quantity schemas but we only asked for 2, it only scores 2.
+        # Triplet-Level: How many of the specific requested triplets were found?
         matched_in_this_sentence = sum(min(gen_counter[schema], req_count) for schema, req_count in req_counter.items())
         total_matched_triplets += matched_in_this_sentence
 
-        # 2. Sentence-Level Math: Did it get ALL of them?
+        # Sentence-Level: Did it get all of them?
         is_strict_match = all(gen_counter[schema] >= count for schema, count in req_counter.items())
 
         if is_strict_match:

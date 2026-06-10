@@ -103,34 +103,41 @@ class PromptTemplates:
         """).strip()
 
     @staticmethod
-    def get_system_prompt_entity():
-        return dedent("""
-                You are an expert synthetic data generator for financial Knowledge Graphs.
-                You will be given [SubjectType] --(Relation)--> [ObjectType] templates. Your task is to generate highly realistic, complex financial news sentences paired with their relational triplet templates.
+    def get_system_prompt_entity(allowed_ontology):
+        schemas_formatted = "\n".join([f"- {schema}" for schema in allowed_ontology])
 
-                JSON FORMAT:
-                Output ONLY a valid JSON array. Do not include markdown blocks, explanations, or conversational text.
-                [
+        prompt_entity = dedent("""
+            You are an expert synthetic data generator for financial Knowledge Graphs.
+            You will be given an Allowed Ontology, which is a collection of [SubjectType] --(Relation)--> [ObjectType] triplets, and a batch-specific Restricted Entity Pool. Your task is to generate highly realistic, complex financial news sentences paired with their relational triplets using only the provided entities.
+
+            JSON FORMAT:
+            Output ONLY a valid JSON array. Do not include markdown blocks, explanations, or conversational text.
+            [
+              {{
+                "text": "The generated natural English sentence.",
+                "triplets": [
                   {{
-                    "text": "The generated natural English sentence.",
-                    "triplets": [
-                      {{
-                        "subject": "The subject entity from sentence",
-                        "relation": "The Exact Relation Name from the template",
-                        "object": "The object entity from sentence",
-                        "subject_type": "The exact Subject Type from the template",
-                        "object_type": "The exact Object Type from the template"
-                      }}
-                    ]
+                    "subject": "The subject entity from sentence",
+                    "relation": "The Exact Relation Name from the ontology",
+                    "object": "The object entity from sentence",
+                    "subject_type": "The exact Subject Type from the ontology",
+                    "object_type": "The exact Object Type from the ontology"
                   }}
                 ]
+              }}
+            ]
 
-                IMPORTANT RULES:
-                1. FLUENT ENGLISH ONLY: NEVER insert the raw relation tokens (e.g., 'Actionto', 'actionin') or the Subject/Object types into the English sentence. You MUST express the relationship using natural, fluent English phrasing.
-                2. EXACT MATCHING: The 'subject' and 'object' values in your JSON MUST be exact substrings extracted from your generated sentence. The relation and subject/object types MUST be from the triplet.
-                3. STRICT ONTOLOGY: You may ONLY use the exact [SubjectType] --(Relation)--> [ObjectType] combinations you will be given. Do not invent relations or mix types.
+            IMPORTANT RULES:
+            1. FLUENT ENGLISH ONLY: NEVER insert the raw relation tokens (e.g., 'Actionto', 'actionin') or the Subject/Object types into the English sentence. You MUST express the relationship using natural, fluent English phrasing.
+            2. EXACT MATCHING: The 'subject' and 'object' values in your JSON MUST be exact substrings extracted from your generated sentence. The relation and subject/object types MUST be from the ontology.
+            3. RESTRICTED VOCABULARY: You MUST ONLY use the specific entities provided in the batch list. Do not invent new company names, people, dates, or financial figures.
+            4. STRICT ONTOLOGY: The relationships you establish between the entities MUST strictly comply with the [SubjectType] --(Relation)--> [ObjectType] rules listed in the Allowed Ontology below. Do not invent relations or mix types.
 
-            """).strip()
+            ALLOWED ONTOLOGY:
+            {schemas_formatted}
+        """).strip()
+
+        return prompt_entity.format(schemas_formatted=schemas_formatted)
 
     @staticmethod
     def get_system_prompt_in_context(allowed_schemas):
@@ -138,7 +145,7 @@ class PromptTemplates:
 
         prompt_template = dedent("""
             You are an expert synthetic data generator for financial Knowledge Graphs.
-            You will be given an allowed ontology, which is a collection of [SubjectType] --(Relation)--> [ObjectType] triplets. Your task is to generate highly realistic, complex financial news sentences paired with their relational triplet.
+            You will be given an Allowed Ontology, which is a collection of [SubjectType] --(Relation)--> [ObjectType] triplets. Your task is to generate highly realistic, complex financial news sentences paired with their relational triplets.
 
             JSON FORMAT:
             Output ONLY a valid JSON array. Do not include markdown blocks, explanations, or conversational text.
@@ -191,30 +198,24 @@ class PromptTemplates:
         )
 
     @staticmethod
-    def get_user_prompt_entity(schemas):
-        n = len(schemas)
-        schema_list = "\n".join([f"{i + 1}. Template: {schema}" for i, schema in enumerate(schemas)])
-
-        prompt_template = dedent("""
+    def get_user_prompt_entity(pool_string, n=10):
+        prompt_entity_user = dedent("""
             TASK: Generate a batch of {n} unique, highly realistic financial sentences.
 
-            REQUIRED BATCH MAPPING:
-            You MUST follow this exact 1-to-1 mapping. Sentence 1 must be built around Template 1, Sentence 2 around Template 2, and so on. 
-
-            {schema_list}
+            RESTRICTED ENTITY POOL FOR THIS BATCH:
+            You may ONLY use the following entities to construct your sentences and JSON triplets:
+            {pool_string}
 
             EXECUTION RULES:
-            1. LITERAL FACT INTEGRATION: The requested Template dictates the core factual foundation of your sentence. 
-               - The text inside the brackets `[...]` are the EXACT literal entity names. You MUST include these exact strings in your English sentence.
-               - The `(Ontology Schema: ...)` at the end of the line explicitly shows you which rule from the ALLOWED ONTOLOGY SCHEMAS this fact belongs to. Do NOT write this schema or the type names into the English sentence.
-            2. COMPLEXITY: Naturally weave in additional valid facts using the Allowed Ontology from your system rules to meet the density requirements.
-            3. EXTREME DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
+            1. FREE STRUCTURE: You may freely choose how to connect these entities using any valid relations from the Allowed Ontology. You can weave between 1 and 5 triplets into a single sentence.
+            2. REUSE AND COMBINE: Constantly recombine these specific entities across the {n} sentences to describe different financial scenarios (e.g., executive shifts, market sector distributions, corporate ownership).
+            3. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
                - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
         """).strip()
 
-        return prompt_template.format(n=n, schema_list=schema_list)
+        return prompt_entity_user.format(n=n, pool_string=pool_string)
 
     @staticmethod
     def get_user_prompt_template(schemas):
@@ -232,7 +233,7 @@ class PromptTemplates:
             EXECUTION RULES:
             1. TEMPLATE INTEGRATION: The requested Template must act as the core factual foundation of the sentence. 
             2. COMPLEXITY: As instructed in the system rules, naturally weave in additional valid triplets from the Allowed Ontology to meet the density requirements.
-            3. EXTREME DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
+            3. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
                - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
@@ -303,7 +304,7 @@ class PromptTemplates:
             EXECUTION RULES:
             1. FREE GENERATION: You may freely choose any valid combinations from the Allowed Ontology in your system rules to build your sentences.
             2. COMPLEXITY: Naturally weave in multiple valid triplets. Generate sentences with one or more valid triplets, up to 5 triplets per sentence.
-            3. EXTREME DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
+            3. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
                - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
