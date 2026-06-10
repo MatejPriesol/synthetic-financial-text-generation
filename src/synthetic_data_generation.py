@@ -184,14 +184,16 @@ def sample_and_format_entity_pool(entity_pool, entity_weights, n_facts_to_sample
 
     # Format into a clean string for the prompt
     formatted_lines = []
+    requested_entity_pool = []
     for entity_type, entities in type_to_entities.items():
         # Convert set to a sorted list for consistent prompting
         entity_list = sorted(list(entities))
+        requested_entity_pool.extend(entity_list)
         formatted_lines.append(f"- {entity_type}: {entity_list}")
 
     # Return both the prompt string and the underlying facts (for downstream evaluation)
     prompt_string = "\n".join(formatted_lines)
-    return prompt_string, sampled_facts
+    return prompt_string, requested_entity_pool
 
 
 def sample_schemas(allowed_schemas, schema_weights, n=10):
@@ -362,7 +364,7 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 10
+    num_of_batches = 1
     sentence_per_batch = 10
     all_generated_sentences = []
 
@@ -405,10 +407,7 @@ def main():
                     item["requested_schema"] = chosen_schemas[j]
                 # In case of entity strategy, the chosen schemas is a tuple containing the prompt triplet and the eval triplet
                 elif args.strategy == "entity":
-                    if j >= len(chosen_schemas):
-                        break
-                    item["requested_schema"] = chosen_schemas[j][1]
-                    item["requested_entity_fact"] = chosen_schemas[j][0]
+                    item["requested_schema"] = chosen_schemas
                 else:
                     # Set to None so the template adherence won't run
                     item["requested_schema"] = None
