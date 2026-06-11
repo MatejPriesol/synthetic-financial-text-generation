@@ -9,7 +9,7 @@ from src.evaluation.perplexity import run_all_perplexity
 from src.evaluation.grammatical_correctness import run_all_grammar
 from src.evaluation.statistical import run_all_statistical
 from src.evaluation.diversity import run_all_diversity
-from src.evaluation.adequacy import run_all_adequacy
+from src.evaluation.adequacy import run_all_adequacy, get_type_of_data
 
 
 # Silence Hugging Face's warnings
@@ -52,6 +52,13 @@ def main():
     with open(schema_path, "r", encoding="utf-8") as f:
         allowed_schemas = json.load(f)
 
+    template_schema_path = "data/03_synthetic/allowed_schemas_template.json"
+    with open(template_schema_path, "r", encoding="utf-8") as f:
+        allowed_schemas_template = json.load(f)
+
+    is_template, is_entity = get_type_of_data(data)
+    schemas_to_save = allowed_schemas_template if is_template else allowed_schemas
+
     if args.verbose:
         print(f"Verbose flag enabled, detailed evaluation results will be printed.\n")
 
@@ -65,7 +72,7 @@ def main():
                 "dataset_size": len(sentences),
                 "device_used": device.upper(),
                 "dataset_path": args.data,
-                "allowed_schemas": allowed_schemas
+                "allowed_schemas": schemas_to_save
             }
         }
     }
@@ -108,7 +115,7 @@ def main():
         else:
             print("Running Adequacy Evals...")
 
-        final_results["Adequacy"] = run_all_adequacy(data, allowed_schemas, args.verbose)
+        final_results["Adequacy"] = run_all_adequacy(data, allowed_schemas, allowed_schemas_template, args.verbose)
 
 
     print("\n" + "=" * 50)

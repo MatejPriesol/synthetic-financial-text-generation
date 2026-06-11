@@ -288,6 +288,25 @@ def sample_grouped_schemas(grouped_templates, n=10):
 
     return sampled_tuples
 
+def save_template_schemas(templates_by_length, output_path):
+    """
+    Flattens templates of all lengths into a unique list of individual
+    triplet signatures and saves them to a JSON file for compliance checking.
+    """
+    flattened_triplets = set()
+
+    for length, data in templates_by_length.items():
+        for template_tuple in data["templates"]:
+            for triplet_str in template_tuple:
+                flattened_triplets.add(triplet_str)
+
+    allowed_template_ontology = sorted(list(flattened_triplets))
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(allowed_template_ontology, f, indent=4)
+
+    print(f"\nSaved {len(allowed_template_ontology)} unique template triplets to {output_path}")
+
 def prepare_batch_prompts(strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, grouped_templates, entity_pool, entity_weights):
     chosen_schemas = []
     system_prompt = ""
@@ -369,6 +388,11 @@ def main():
     all_generated_sentences = []
 
     templates_by_length = build_template_sets_from_data(data)
+
+    template_json_path = output_dir / "allowed_schemas_template.json"
+
+    # Extract and save them
+    save_template_schemas(templates_by_length, template_json_path)
 
     if args.test:
 

@@ -146,6 +146,59 @@ def evaluate_template_adherence(data, verbose=False):
         "total_triplets_matched": total_matched_triplets
     }
 
+def evaluate_entity_adherence(data, verbose=False):
+    """Verifies that the generated literal subjects/objects exist in the requested pool."""
+    sentence_match_count = 0
+    total_valid_sentences = 0
+    total_generated_entities = 0
+    total_adherent_entities = 0
+
+    for sample in data:
+        allowed_entities = getattr(sample, 'requested_schema', None)
+        if not allowed_entities or not isinstance(allowed_entities, list):
+            continue
+
+        total_valid_sentences += 1
+        allowed_set = set(allowed_entities)
+        normalized_allowed_set = {"".join(e.split()).lower() for e in allowed_entities}
+
+        all_sentence_entities_valid = True
+
+        for t in sample.triplets:
+            subj = getattr(t, 'subject', '')
+            obj = getattr(t, 'object', '')
+            total_generated_entities += 2
+
+            norm_subj = "".join(subj.split()).lower()
+            norm_obj = "".join(obj.split()).lower()
+
+            s_match = norm_subj in normalized_allowed_set
+            o_match = norm_obj in normalized_allowed_set
+
+            if s_match: total_adherent_entities += 1
+            if o_match: total_adherent_entities += 1
+
+            if not (s_match and o_match):
+                all_sentence_entities_valid = False
+
+        if all_sentence_entities_valid and len(sample.triplets) > 0:
+            sentence_match_count += 1
+        elif verbose and len(sample.triplets) > 0:
+            sentence_text = getattr(sample, 'sentence', getattr(sample, 'text', 'Unknown Text'))
+            print(f"FAILED ENTITY CONSTRAINT:\n  Sentence: {sentence_text}")
+            print(f"  Allowed Pool: {allowed_entities}")
+            print(f"  Generated Entities: {[(getattr(t,'subject',''), getattr(t,'object','')) for t in sample.triplets]}\n")
+
+    strict_score = (sentence_match_count / total_valid_sentences) * 100 if total_valid_sentences > 0 else 0
+    token_score = (total_adherent_entities / total_generated_entities) * 100 if total_generated_entities > 0 else 0
+
+    return {
+        "Per_sentence_percentage": round(strict_score, 2),
+        "Per_entity_percentage": round(token_score, 2),
+        "total_sentences_checked": total_valid_sentences,
+        "total_entities_checked": total_generated_entities,
+        "total_entities_adherent": total_adherent_entities
+    }
 
 def evaluate_surface_form_copying(data):
     copied_count = 0
@@ -168,10 +221,12 @@ def evaluate_surface_form_copying(data):
     }
 
 
-def evaluate_schema_compliance(data, allowed_type_schemas):
+def evaluate_schema_compliance(data, allowed_ontology, allowed_schemas_template, template=False):
     total_triplets = 0
     compliant_count = 0
     hallucination_counts = {}
+
+    ontology = allowed_schemas_template if template else allowed_ontology
 
     for sample in data:
         for t in sample.triplets:
@@ -182,7 +237,7 @@ def evaluate_schema_compliance(data, allowed_type_schemas):
             # Reconstruct the type signature
             signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
 
-            if signature in allowed_type_schemas:
+            if signature in ontology:
                 compliant_count += 1
             else:
                 hallucination_counts[signature] = hallucination_counts.get(signature, 0) + 1
@@ -199,16 +254,35 @@ def evaluate_schema_compliance(data, allowed_type_schemas):
         "hallucination_frequencies": sorted_hallucinations
     }
 
+def get_type_of_data(data):
+    is_template = False
+    is_entity = False
 
-def run_all_adequacy(data, allowed_schemas, verbose=False):
+    if getattr(data[0], 'requested_schema', None) is not None:
+        sample_req = data[0].requested_schema
+
+        if isinstance(sample_req, list) and len(sample_req) > 0:
+            if isinstance(sample_req[0], str) and '-->' in sample_req[0]:
+                is_template = True
+            else:
+                is_entity = True
+
+    return is_template, is_entity
+
+
+def run_all_adequacy(data, allowed_schemas, allowed_schemas_template, verbose=False):
     results = {}
 
-    if len(data) > 0 and getattr(data[0], 'requested_schema', None):
+    is_template, is_entity = get_type_of_data(data)
+
+    if is_template:
         results["template_adherence"] = evaluate_template_adherence(data, verbose=verbose)
 
-    #results["llm_judge"] = evaluate_llm_as_judge(data, verbose=verbose)
+    if is_entity:
+        results["entity_adherence"] = evaluate_entity_adherence(data, verbose=verbose)
+
     results["surface_form_copying"] = evaluate_surface_form_copying(data)
-    results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas)
+    results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas, allowed_schemas_template, is_template)
 
     return results
 
@@ -221,6 +295,7 @@ def main():
     # Specific eval flags
     parser.add_argument("--llm-judge", action="store_true", help="Run only LLM Judge")
     parser.add_argument("--template-adherence", action="store_true", help="Run only template adherence")
+    parser.add_argument("--entity-adherence", action="store_true", help="Run only entity adherence")
     parser.add_argument("--surface-form", action="store_true", help="Run surface form copying eval")
     parser.add_argument("--schema-compliance", action="store_true", help="Run only schema compliance")
 
@@ -228,36 +303,45 @@ def main():
 
     data, sentences = load_data_for_eval(args.data)
 
-    schema_path = "data/03_synthetic/allowed_schemas_cutoff_2.0%.json"
-    with open(schema_path, "r", encoding="utf-8") as f:
+    allowed_ontology_path = "data/03_synthetic/allowed_schemas_cutoff_2.0%.json"
+    with open(allowed_ontology_path, "r", encoding="utf-8") as f:
         allowed_schemas = json.load(f)
+
+    template_schema_path = "data/03_synthetic/allowed_schemas_template.json"
+    with open(template_schema_path, "r", encoding="utf-8") as f:
+        allowed_schemas_template = json.load(f)
 
     specific_flags = [
         args.llm_judge,
         args.template_adherence,
+        args.entity_adherence,
         args.surface_form,
         args.schema_compliance
     ]
 
     local_results = {}
 
+    is_template, is_entity = get_type_of_data(data)
+
     # If any of the specific flags are True, only run those
     if any(specific_flags):
         print("Running selected adequacy evaluations...\n")
-        if args.llm_judge:
-            local_results["llm_judge"] = evaluate_llm_as_judge(data, verbose=args.verbose)
-        if args.template_adherence:
+        #if args.llm_judge:
+        #    local_results["llm_judge"] = evaluate_llm_as_judge(data, verbose=args.verbose)
+        if args.template_adherence and is_template:
             local_results["template_adherence"] = evaluate_template_adherence(data, verbose=args.verbose)
+        if args.entity_adherence and is_entity:
+            local_results["entity_adherence"] = evaluate_entity_adherence(data, verbose=args.verbose)
         if args.surface_form:
             local_results["surface_form_copying"] = evaluate_surface_form_copying(data)
         if args.schema_compliance:
-            local_results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas)
+            local_results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas, allowed_schemas_template, is_template)
 
 
     # If all specific flags are False, default to running everything
     else:
         print("No specific flags detected. Running all adequacy evaluations by default...\n")
-        local_results = run_all_adequacy(data, allowed_schemas, verbose=args.verbose)
+        local_results = run_all_adequacy(data, allowed_schemas, allowed_schemas_template, verbose=args.verbose)
 
     print("\n=== LOCAL RUN RESULTS ===")
     print(json.dumps(local_results, indent=2))
