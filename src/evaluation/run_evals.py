@@ -83,7 +83,7 @@ def main():
         else:
             print("Running Perplexity Evals ...")
 
-        final_results["Perplexity"] = run_all_perplexity(sentences, args.verbose)
+        #final_results["Perplexity"] = run_all_perplexity(sentences, args.verbose)
 
     if args.all or args.grammar:
         if args.verbose:
