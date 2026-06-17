@@ -198,7 +198,7 @@ class PromptTemplates:
         )
 
     @staticmethod
-    def get_user_prompt_entity(pool_string, n=10):
+    def get_user_prompt_entity(pool_string, density_blueprint, n=10):
         prompt_entity_user = dedent("""
             TASK: Generate a batch of {n} unique, highly realistic financial sentences.
 
@@ -207,15 +207,17 @@ class PromptTemplates:
             {pool_string}
 
             EXECUTION RULES:
-            1. FREE STRUCTURE: You may freely choose how to connect these entities using any valid relations from the Allowed Ontology. You can weave between 1 and 5 triplets into a single sentence.
-            2. REUSE AND COMBINE: Constantly recombine these specific entities across the {n} sentences to describe different financial scenarios (e.g., executive shifts, market sector distributions, corporate ownership).
-            3. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
+            1. FREE STRUCTURE: You may freely choose how to connect these entities using any valid relations from the Allowed Ontology.
+            2. REUSE AND COMBINE: Constantly recombine these specific entities across the {n} sentences.
+            3. TRIPLET BLUEPRINT: For each sentence, use the following blueprint for the number of triplets:
+            {density_blueprint}
+            4. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
-               - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
+               - Vary the sentence lengths and complexity (mix shorter and longer sentences).
         """).strip()
 
-        return prompt_entity_user.format(n=n, pool_string=pool_string)
+        return prompt_entity_user.format(n=n, pool_string=pool_string, density_blueprint=density_blueprint)
 
     @staticmethod
     def get_user_prompt_template(schemas):
@@ -268,13 +270,13 @@ class PromptTemplates:
             2. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
-               - Vary the sentence lengths
+               - Vary the sentence lengths and complexity (mix shorter and longer sentences).
         """).strip()
 
         return prompt_template.format(n=n, schema_list=schema_list)
 
     @staticmethod
-    def get_user_prompt_few_shot(n, examples):
+    def get_user_prompt_few_shot(n, examples, density_blueprint):
         examples_formatted = "\n".join([f"Example {i + 1}: {ex}" for i, ex in enumerate(examples)])
 
         prompt_template = dedent("""
@@ -287,30 +289,32 @@ class PromptTemplates:
 
             EXECUTION RULES:
             1. ORIGINALITY: Do NOT copy the exact facts or entities from the examples. Generate entirely new facts using the Allowed Ontology from your system rules.
-            2. COMPLEXITY: Mimic the linguistic complexity of the examples, weaving in multiple valid triplets per sentence. Generate sentences with one or more valid triplets, up to 5 triplets per sentence.
+            2. TRIPLET BLUEPRINT: For each sentence, use the following blueprint for the number of triplets:
+            {density_blueprint}
             3. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
-               - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
+               - Vary the sentence lengths and complexity (mix shorter and longer sentences).
         """).strip()
 
-        return prompt_template.format(n=n, m=len(examples), examples_formatted=examples_formatted)
+        return prompt_template.format(n=n, m=len(examples), examples_formatted=examples_formatted, density_blueprint=density_blueprint)
 
     @staticmethod
-    def get_user_prompt_zero_shot(n):
+    def get_user_prompt_zero_shot(n, density_blueprint):
         prompt_template = dedent("""
             TASK: Generate a batch of {n} unique, highly realistic financial sentences.
 
             EXECUTION RULES:
             1. FREE GENERATION: You may freely choose any valid combinations from the Allowed Ontology in your system rules to build your sentences.
-            2. COMPLEXITY: Naturally weave in multiple valid triplets. Generate sentences with one or more valid triplets, up to 5 triplets per sentence.
+            2. TRIPLET BLUEPRINT: For each sentence, use the following blueprint for the number of triplets:
+            {density_blueprint}
             3. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
                - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
                - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
-               - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
+               - Vary the sentence lengths and complexity (mix shorter and longer sentences).
         """).strip()
 
-        return prompt_template.format(n=n)
+        return prompt_template.format(n=n, density_blueprint=density_blueprint)
 
 
     """

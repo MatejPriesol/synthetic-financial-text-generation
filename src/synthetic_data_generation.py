@@ -305,7 +305,26 @@ def save_template_schemas(templates_by_length, output_path):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(allowed_template_ontology, f, indent=4)
 
-    print(f"\nSaved {len(allowed_template_ontology)} unique template triplets to {output_path}")
+    #print(f"\nSaved {len(allowed_template_ontology)} unique template triplets to {output_path}")
+
+def get_density_blueprint(batch_size=10):
+    triplet_targets = [1, 2, 3, 4, 5]
+    # The true distribution of lengths from the FIRE dataset
+    length_weights = [30.5, 26.8, 20.2, 14.6, 8.0]
+
+    # Probabilistic sampling based on the FIRE distribution
+    sampled_lengths = random.choices(
+        population=triplet_targets,
+        weights=length_weights,
+        k=batch_size
+    )
+
+    # Format for the prompt
+    formatted_lines = []
+    for i, target in enumerate(sampled_lengths, 1):
+        formatted_lines.append(f"- Sentence {i}: Must contain exactly {target} triplet(s).")
+
+    return "\n".join(formatted_lines)
 
 def prepare_batch_prompts(strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, grouped_templates, entity_pool, entity_weights):
     chosen_schemas = []
@@ -320,19 +339,22 @@ def prepare_batch_prompts(strategy, valid_pool, allowed_ontology, schema_weights
         user_prompt = PromptTemplates.get_user_prompt_template_new(chosen_schemas)
 
     elif strategy == "entity":
+        blueprint = get_density_blueprint(batch_size=sentence_per_batch)
         system_prompt = PromptTemplates.get_system_prompt_entity(allowed_ontology)
         pool_string, underlying_facts = sample_and_format_entity_pool(entity_pool, entity_weights, n_facts_to_sample=20)
-        user_prompt = PromptTemplates.get_user_prompt_entity(pool_string)
+        user_prompt = PromptTemplates.get_user_prompt_entity(pool_string, blueprint)
         chosen_schemas = underlying_facts
 
     elif strategy == "few-shot":
+        blueprint = get_density_blueprint(batch_size=sentence_per_batch)
         few_shot_examples = sample_few_shot_examples(valid_pool, n=3)
         system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_ontology)
-        user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples)
+        user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples, blueprint)
 
     elif strategy == "zero-shot":
+        blueprint = get_density_blueprint(batch_size=sentence_per_batch)
         system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_ontology)
-        user_prompt = PromptTemplates.get_user_prompt_zero_shot(sentence_per_batch)
+        user_prompt = PromptTemplates.get_user_prompt_zero_shot(sentence_per_batch, blueprint)
 
     return system_prompt, user_prompt, chosen_schemas
 
@@ -354,7 +376,7 @@ def main():
         client = GroqClient(temperature=1.3)
     else:
         print("Using local provider")
-        client = LocalClient(temperature=1.3)
+        client = LocalClient(temperature=1.7)
     data_path = Path("data") / "02_processed" / "fire_train_processed.json"
     data = load_processed_data(data_path)
 
@@ -383,7 +405,7 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 1
+    num_of_batches = 50
     sentence_per_batch = 10
     all_generated_sentences = []
 

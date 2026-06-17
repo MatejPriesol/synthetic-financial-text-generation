@@ -102,6 +102,7 @@ class LocalClient:
         self.model = "llama3.3:70b"
         self.temperature = temperature
         self.url = "http://localhost:11434/api/chat"
+        print(f"Set temperature to {self.temperature}")
 
     def test_connection(self):
         print(f"Testing local Ollama connection for {self.model}...")
