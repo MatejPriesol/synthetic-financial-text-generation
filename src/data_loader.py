@@ -2,6 +2,7 @@ import json
 import re
 import nltk
 import random
+import spacy
 
 from bs4 import BeautifulSoup
 from markdown_it import MarkdownIt
@@ -43,14 +44,26 @@ def detokenize_sentence(tokens):
 
     return text.strip()
 
+nlp = spacy.load("en_core_web_sm", disable=["ner", "lemmatizer", "tagger"])
+
 def load_fire_data(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         raw_data = json.load(f)
 
     all_samples = []
+    skipped = 0
 
     for item in raw_data:
         sentence = detokenize_sentence(item['tokens'])
+
+        doc = nlp(sentence)
+        sentences = list(doc.sents)
+
+        if len(sentences) > 1:
+            #print(f"[SKIPPED] Multi-sentence detected (ID: {item.get('orig_id', -1)}):")
+            #print(f"  -> {sentence}\n")
+            skipped += 1
+            continue
 
         entities = {i: ent for i, ent in enumerate(item['entities'])}
 
@@ -82,6 +95,7 @@ def load_fire_data(filepath):
         )
         all_samples.append(sample)
 
+    print(f"Skipped {skipped} examples containing more than 1 sentence.")
     return all_samples
 
 

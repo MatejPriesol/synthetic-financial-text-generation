@@ -220,8 +220,8 @@ def get_valid_few_shot_pool(data, allowed_type_schemas):
                 is_valid = False
                 break
 
-        # Only keep it if it's completely valid and actually has triplets
-        if is_valid and len(sample.triplets) > 0:
+        # Only keep it if it's completely valid and has between 1 and 5 triplets included
+        if is_valid and 0 < len(sample.triplets) <= 5:
             valid_samples.append(sample)
 
     print(f"Few-Shot Pool Built: Kept {len(valid_samples)} strictly valid sentences out of {len(data)}.")
