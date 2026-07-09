@@ -437,14 +437,25 @@ def main():
         response = client.generate_message(system_prompt, user_prompt)
 
         if response is None:
-            return []  # Return empty list if this specific call fails
+            return [], "api_failure"  # Return empty list if this specific call fails
 
         batch_results = []
+        status = "exact_match"
+
         try:
             batch_data = json.loads(response)
 
             if isinstance(batch_data, dict):
                 batch_data = [batch_data]
+
+            # Determine if the generated count of sentences was good
+            generated_count = len(batch_data)
+            requested_count = len(blueprint_counts)
+
+            if generated_count > requested_count:
+                status = "over_generated"
+            elif generated_count < requested_count:
+                status = "under_generated"
 
             # Assign schemas for evaluation based on strategy
             for j, item in enumerate(batch_data):
@@ -467,12 +478,12 @@ def main():
                 batch_results.append(item)
 
         except json.JSONDecodeError:
-            print(f"  -> Failed to parse JSON for batch {i+1}")
-            pass
+            status = "json_failure"
 
-        return batch_results
+        return batch_results, status
 
     max_workers = 10 if args.provider == "local" else 2
+    run_stats = Counter()
 
     try:
         # Launch the ThreadPoolExecutor
@@ -483,10 +494,13 @@ def main():
             # Wrap in tqdm to update the progress bar as they finish (not necessarily in order)
             for future in tqdm(concurrent.futures.as_completed(futures), total=num_of_batches):
                 try:
-                    result = future.result()
+                    result, status = future.result()
+                    run_stats[status] += 1
+
                     if result:
                         all_generated_sentences.extend(result)
                 except Exception as exc:
+                    run_stats["code_exception"] += 1
                     print(f"  [!] A batch generated an exception: {exc}")
 
                 #if args.provider == "api":
@@ -497,6 +511,12 @@ def main():
     except Exception as e:
         print(f"\n[!] Unexpected error: {e}.")
     finally:
+        print("\n" + "=" * 40)
+        print("FINAL BATCH STATISTICS:")
+        for status_type, count in run_stats.items():
+            print(f" - {status_type}: {count}")
+        print("=" * 40)
+
         print(f"\nGeneration stopped/finished. Saving {len(all_generated_sentences)} sentences...")
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(all_generated_sentences, f, indent=4)
