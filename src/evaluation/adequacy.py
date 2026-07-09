@@ -93,6 +93,7 @@ def evaluate_template_adherence(data, verbose=False):
     # Triplet-level trackers (Granular)
     total_requested_triplets = 0
     total_matched_triplets = 0
+    total_generated_triplets = 0
 
     if verbose:
         print("\n Template Adherence Mismatches:")
@@ -115,6 +116,8 @@ def evaluate_template_adherence(data, verbose=False):
             o_type = getattr(t, 'object_type', 'UNKNOWN')
             gen_schemas.append(f"[{s_type}] --({t.relation})--> [{o_type}]")
 
+        total_generated_triplets += len(gen_schemas)
+
         req_counter = Counter(req_schemas)
         gen_counter = Counter(gen_schemas)
 
@@ -122,8 +125,8 @@ def evaluate_template_adherence(data, verbose=False):
         matched_in_this_sentence = sum(min(gen_counter[schema], req_count) for schema, req_count in req_counter.items())
         total_matched_triplets += matched_in_this_sentence
 
-        # Sentence-Level: Did it get all of them?
-        is_strict_match = all(gen_counter[schema] >= count for schema, count in req_counter.items())
+        # Sentence-Level: Perfect match required
+        is_strict_match = (gen_counter == req_counter)
 
         if is_strict_match:
             sentence_match_count += 1
@@ -138,12 +141,20 @@ def evaluate_template_adherence(data, verbose=False):
     strict_score = (sentence_match_count / total_valid_sentences) * 100 if total_valid_sentences > 0 else 0
     yield_score = (total_matched_triplets / total_requested_triplets) * 100 if total_requested_triplets > 0 else 0
 
+    # Precision (What % of the model's output was actually requested?)
+    precision_score = (total_matched_triplets / total_generated_triplets) * 100 if total_generated_triplets > 0 else 0
+
+    # Over-generation count
+    hallucinated_schema_count = total_generated_triplets - total_matched_triplets
+
     return {
         "Per_sentence_percentage": round(strict_score, 2),
-        "Per_triplet_percentage": round(yield_score, 2),
-        "total_sentences_checked": total_valid_sentences,
-        "total_triplets_requested": total_requested_triplets,
-        "total_triplets_matched": total_matched_triplets
+        "Per_triplet_recall_percentage": round(yield_score, 2),
+        "Per_triplet_precision_percentage": round(precision_score, 2),
+        "Total_sentences_checked": total_valid_sentences,
+        "Total_triplets_requested": total_requested_triplets,
+        "Total_triplets_matched": total_matched_triplets,
+        "Total_unrequested_triplets": hallucinated_schema_count
     }
 
 def evaluate_entity_adherence(data, verbose=False):
@@ -194,7 +205,7 @@ def evaluate_entity_adherence(data, verbose=False):
 
     return {
         "Per_sentence_percentage": round(strict_score, 2),
-        "Per_entity_percentage": round(token_score, 2),
+        "Per_entity_precision_percentage": round(token_score, 2),
         "total_sentences_checked": total_valid_sentences,
         "total_entities_checked": total_generated_entities,
         "total_entities_adherent": total_adherent_entities
