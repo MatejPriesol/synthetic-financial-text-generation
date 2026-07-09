@@ -27,6 +27,7 @@ class SentenceSample:
     sentence: str
     triplets: List[Triplet]
     requested_schema: str = None
+    requested_triplet_count: int = None
 
 
 """
@@ -242,7 +243,8 @@ def load_synthetic_fire_data(filepath):
             id=f"synth_{i}",
             sentence=item.get('text', ''),
             triplets=triplets,
-            requested_schema = item.get('requested_schema')
+            requested_schema = item.get('requested_schema'),
+            requested_triplet_count = item.get('requested_triplet_count')
         )
         examples.append(example)
 

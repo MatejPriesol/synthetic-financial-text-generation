@@ -324,10 +324,11 @@ def get_density_blueprint(batch_size=10):
     for i, target in enumerate(sampled_lengths, 1):
         formatted_lines.append(f"- Sentence {i}: Must contain exactly {target} triplet(s).")
 
-    return "\n".join(formatted_lines)
+    return "\n".join(formatted_lines), sampled_lengths
 
 def prepare_batch_prompts(strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, grouped_templates, entity_pool, entity_weights):
     chosen_schemas = []
+    blueprint_counts = []
     system_prompt = ""
     user_prompt = ""
 
@@ -337,26 +338,27 @@ def prepare_batch_prompts(strategy, valid_pool, allowed_ontology, schema_weights
         system_prompt = PromptTemplates.get_system_prompt_template()
         chosen_schemas = sample_grouped_schemas(grouped_templates, n=sentence_per_batch)
         user_prompt = PromptTemplates.get_user_prompt_template_new(chosen_schemas)
+        blueprint_counts = [len(schema_tuple) for schema_tuple in chosen_schemas]
 
     elif strategy == "entity":
-        blueprint = get_density_blueprint(batch_size=sentence_per_batch)
+        blueprint_string, blueprint_counts = get_density_blueprint(batch_size=sentence_per_batch)
         system_prompt = PromptTemplates.get_system_prompt_entity(allowed_ontology)
         pool_string, underlying_facts = sample_and_format_entity_pool(entity_pool, entity_weights, n_facts_to_sample=20)
-        user_prompt = PromptTemplates.get_user_prompt_entity(pool_string, blueprint)
+        user_prompt = PromptTemplates.get_user_prompt_entity(pool_string, blueprint_string)
         chosen_schemas = underlying_facts
 
     elif strategy == "few-shot":
-        blueprint = get_density_blueprint(batch_size=sentence_per_batch)
+        blueprint_string, blueprint_counts = get_density_blueprint(batch_size=sentence_per_batch)
         few_shot_examples = sample_few_shot_examples(valid_pool, n=3)
         system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_ontology)
-        user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples, blueprint)
+        user_prompt = PromptTemplates.get_user_prompt_few_shot(sentence_per_batch, few_shot_examples, blueprint_string)
 
     elif strategy == "zero-shot":
-        blueprint = get_density_blueprint(batch_size=sentence_per_batch)
+        blueprint_string, blueprint_counts = get_density_blueprint(batch_size=sentence_per_batch)
         system_prompt = PromptTemplates.get_system_prompt_in_context(allowed_ontology)
-        user_prompt = PromptTemplates.get_user_prompt_zero_shot(sentence_per_batch, blueprint)
+        user_prompt = PromptTemplates.get_user_prompt_zero_shot(sentence_per_batch, blueprint_string)
 
-    return system_prompt, user_prompt, chosen_schemas
+    return system_prompt, user_prompt, chosen_schemas, blueprint_counts
 
 def main():
     parser = argparse.ArgumentParser(description="Synthetic Data Generator")
@@ -418,7 +420,7 @@ def main():
 
     if args.test:
 
-        system_prompt, user_prompt, chosen_schemas = prepare_batch_prompts(
+        system_prompt, user_prompt, chosen_schemas, blueprint_counts = prepare_batch_prompts(
             args.strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, templates_by_length, entity_pool, entity_weights
         )
 
@@ -427,7 +429,7 @@ def main():
 
     def process_batch(i):
         # Prepare the prompt
-        system_prompt, user_prompt, chosen_schemas = prepare_batch_prompts(
+        system_prompt, user_prompt, chosen_schemas, blueprint_counts = prepare_batch_prompts(
             args.strategy, valid_pool, allowed_ontology, schema_weights, sentence_per_batch, templates_by_length, entity_pool, entity_weights
         )
 
@@ -446,10 +448,14 @@ def main():
 
             # Assign schemas for evaluation based on strategy
             for j, item in enumerate(batch_data):
+
+                # If the model generates more sentences than requested, break
+                if j >= len(blueprint_counts):
+                    break
+
+                item["requested_triplet_count"] = blueprint_counts[j]  # Attach the requested triplet count
+
                 if args.strategy == "template":
-                    # Ignore any sentences that go beyond the templates
-                    if j >= len(chosen_schemas):
-                        break
                     item["requested_schema"] = chosen_schemas[j]
                 # In case of entity strategy, the chosen schemas is a tuple containing the prompt triplet and the eval triplet
                 elif args.strategy == "entity":

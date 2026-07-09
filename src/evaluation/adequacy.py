@@ -211,6 +211,21 @@ def evaluate_entity_adherence(data, verbose=False):
         "total_entities_adherent": total_adherent_entities
     }
 
+
+def evaluate_blueprint_adherence(data):
+    total = 0
+    passed = 0
+    for sample in data:
+        target = getattr(sample, 'requested_triplet_count', None)
+        if target is not None:
+            total += 1
+            if len(sample.triplets) == target:
+                passed += 1
+
+    score = (passed / total) * 100 if total > 0 else 0
+
+    return {"triplet_blueprint_adherence": score}
+
 def evaluate_surface_form_copying(data):
     copied_count = 0
     total = 0
@@ -292,6 +307,7 @@ def run_all_adequacy(data, allowed_schemas, allowed_schemas_template, verbose=Fa
     if is_entity:
         results["entity_adherence"] = evaluate_entity_adherence(data, verbose=verbose)
 
+    results["blueprint_adherence"] = evaluate_blueprint_adherence(data)
     results["surface_form_copying"] = evaluate_surface_form_copying(data)
     results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas, allowed_schemas_template, is_template)
 
@@ -309,6 +325,7 @@ def main():
     parser.add_argument("--entity-adherence", action="store_true", help="Run only entity adherence")
     parser.add_argument("--surface-form", action="store_true", help="Run surface form copying eval")
     parser.add_argument("--schema-compliance", action="store_true", help="Run only schema compliance")
+    parser.add_argument("--blueprint-adherence", action="store_true", help="Run only triplet blueprint adherence")
 
     args = parser.parse_args()
 
@@ -327,7 +344,8 @@ def main():
         args.template_adherence,
         args.entity_adherence,
         args.surface_form,
-        args.schema_compliance
+        args.schema_compliance,
+        args.blueprint_adherence
     ]
 
     local_results = {}
@@ -347,6 +365,8 @@ def main():
             local_results["surface_form_copying"] = evaluate_surface_form_copying(data)
         if args.schema_compliance:
             local_results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas, allowed_schemas_template, is_template)
+        if args.blueprint_adherence:
+            local_results["blueprint_adherence"] = evaluate_blueprint_adherence(data)
 
 
     # If all specific flags are False, default to running everything
