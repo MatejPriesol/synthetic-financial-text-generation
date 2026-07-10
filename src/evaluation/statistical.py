@@ -8,62 +8,94 @@ import seaborn as sns
 from collections import Counter
 from src.data_loader import load_data_for_eval
 
-def evaluate_obj_subj(synthetic_data, top_n=10, verbose=False):
-    subjects = [triplet.subject for sample in synthetic_data for triplet in sample.triplets]
-    objects = [triplet.object for sample in synthetic_data for triplet in sample.triplets]
 
+def evaluate_entities(synthetic_data, top_n=10, verbose=False):
+    subjects = [getattr(t, 'subject', '') for sample in synthetic_data for t in sample.triplets]
+    objects = [getattr(t, 'object', '') for sample in synthetic_data for t in sample.triplets]
+
+    subject_types = [getattr(t, 'subject_type', 'UNKNOWN') for sample in synthetic_data for t in sample.triplets]
+    object_types = [getattr(t, 'object_type', 'UNKNOWN') for sample in synthetic_data for t in sample.triplets]
+
+    # Unified Trackers
+    all_entities = subjects + objects
+    all_types = subject_types + object_types
+
+    # Totals for percentage math
+    total_entities = len(all_entities)
+    total_types = len(all_types)
+    total_subjects = len(subjects)
+    total_objects = len(objects)
+
+    unified_counts = Counter(all_entities)
+    type_counts = Counter(all_types)
     subject_counts = Counter(subjects)
     object_counts = Counter(objects)
 
-    top_subjects = subject_counts.most_common(top_n)
-    top_objects = object_counts.most_common(top_n)
+    # Helper function to format the dictionary output
+    def format_with_pct(counter_obj, total):
+        return {
+            k: {"count": v, "percentage": round((v / total) * 100, 2) if total > 0 else 0}
+            for k, v in counter_obj.most_common(top_n)
+        }
 
     if verbose:
-        print(f"{'Top Subjects (Heads)':<25} | {'Top Objects (Tails)'}")
-        print("-" * 50)
-
-        for i in range(top_n):
-            s_str = f"{top_subjects[i][0]} ({top_subjects[i][1]})" if i < len(top_subjects) else ""
-            o_str = f"{top_objects[i][0]} ({top_objects[i][1]})" if i < len(top_objects) else ""
-
-            print(f"{s_str:<25} | {o_str}")
+        print(f"\n{'Top Unified Entities':<35} | {'Count (Percentage)'}")
+        print("-" * 45)
+        for ent, count in unified_counts.most_common(top_n):
+            pct = (count / total_entities) * 100 if total_entities > 0 else 0
+            print(f"{ent:<35} | {count} ({pct:.2f}%)")
 
     return {
-        "top_subjects": {k: v for k, v in top_subjects},
-        "top_objects": {k: v for k, v in top_objects}
+        "top_unified_entities": format_with_pct(unified_counts, total_entities),
+        "top_entity_types": format_with_pct(type_counts, total_types),
+        "top_subjects_breakdown": format_with_pct(subject_counts, total_subjects),
+        "top_objects_breakdown": format_with_pct(object_counts, total_objects)
     }
-
 
 def profile_ontology(data, include_types=False, top_n=10, verbose=False):
     schema_elements = []
+    relation_elements = []
 
     for sample in data:
         for t in sample.triplets:
+            relation = getattr(t, 'relation', 'UNKNOWN_RELATION')
+            relation_elements.append(relation)
+
             if include_types:
                 s_type = getattr(t, 'subject_type', 'UNKNOWN_TYPE')
                 o_type = getattr(t, 'object_type', 'UNKNOWN_TYPE')
-                signature = f"[{s_type}] --({t.relation})--> [{o_type}]"
+                signature = f"[{s_type}] --({relation})--> [{o_type}]"
                 schema_elements.append(signature)
             else:
-                schema_elements.append(t.relation)
+                schema_elements.append(relation)
 
-    counts = Counter(schema_elements)
-    num_of_elements = len(schema_elements)
+    schema_counts = Counter(schema_elements)
+    relation_counts = Counter(relation_elements)
+
+    total_schemas = len(schema_elements)
+    total_relations = len(relation_elements)
+
+    # Helper function for percentages
+    def format_with_pct(counter_obj, total):
+        return {
+            k: {"count": v, "percentage": round((v / total) * 100, 2) if total > 0 else 0}
+            for k, v in counter_obj.most_common(top_n)
+        }
 
     if verbose:
-        print(f"\n{'Count':>7} | {'Triplet (or relation if no entity types)'}")
-        print("-" * 60)
-
-        for element, count in counts.most_common(top_n):
-            pct_str = f"{(count / num_of_elements) * 100:.2f}%"
-            print(f"{pct_str:>7} | {element}")
+        print(f"\n{'Top Schemas':<55} | {'Count (Percentage)'}")
+        print("-" * 65)
+        for schema, count in schema_counts.most_common(top_n):
+            pct = (count / total_schemas) * 100 if total_schemas > 0 else 0
+            print(f"{schema:<55} | {count} ({pct:.2f}%)")
 
     return {
-        "total_triplets_extracted": num_of_elements,
-        "unique_schemas_used": len(counts),
-        "top_schemas": {element: count for element, count in counts.most_common(top_n)}
+        "total_triplets_extracted": total_schemas,
+        "unique_schemas_used": len(schema_counts),
+        "unique_relations_used": len(relation_counts),
+        "top_schemas": format_with_pct(schema_counts, total_schemas),
+        "top_relations": format_with_pct(relation_counts, total_relations)
     }
-
 
 def evaluate_triplet_density(data, save_plot_path=None, verbose=False):
     triplet_counts = [len(getattr(sample, 'triplets', [])) for sample in data]
@@ -130,7 +162,7 @@ def has_types_helper(data):
 
 
 def run_all_statistical(data, save_name=None, verbose=False):
-    results = {"entities": evaluate_obj_subj(data, verbose=verbose),
+    results = {"entities": evaluate_entities(synthetic_data=data, top_n=10, verbose=verbose),
                "ontology": profile_ontology(data, include_types=has_types_helper(data), verbose=verbose)}
 
     plot_filepath = f"output/diversity_plots/{save_name}_triplet_density.png" if save_name else None
@@ -169,7 +201,7 @@ def main():
     if any(specific_flags):
         print("Running selected statistical evaluations...\n")
         if args.entities:
-            local_results["entities"] = evaluate_obj_subj(data, verbose=args.verbose)
+            local_results["entities"] = evaluate_entities(data, top_n=10, verbose=args.verbose)
         if args.ontology:
             local_results["ontology"] = profile_ontology(data, include_types=has_types_helper(data), verbose=args.verbose)
         if args.triplet_density:
