@@ -1,6 +1,7 @@
 import json
 import time
 import random
+import math
 import argparse
 import concurrent.futures
 
@@ -407,8 +408,14 @@ def main():
     print("\n--------------------")
     print("Starting batch generation")
 
-    num_of_batches = 50
+    # Config
+    target_dataset_size = 2000
     sentence_per_batch = 10
+    safety_buffer_percentage = 10
+
+    total_target_sentences = target_dataset_size * (1 + safety_buffer_percentage / 100)
+    num_of_batches = math.ceil(total_target_sentences / sentence_per_batch)
+
     all_generated_sentences = []
 
     templates_by_length = build_template_sets_from_data(data)
@@ -454,8 +461,10 @@ def main():
 
             if generated_count > requested_count:
                 status = "over_generated"
+                return [], status
             elif generated_count < requested_count:
                 status = "under_generated"
+                return [], status
 
             # Assign schemas for evaluation based on strategy
             for j, item in enumerate(batch_data):
