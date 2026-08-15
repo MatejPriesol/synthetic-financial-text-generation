@@ -134,7 +134,7 @@ def build_entity_schema(data, allowed_type_schemas, frequency_threshold=1):
     return allowed_schemas, schema_weights
 
 
-def build_global_entity_triplet_pool(data, allowed_type_schemas, pool_size=500):
+def build_global_entity_triplet_pool(data, allowed_type_schemas, pool_size=664):
     """
     Extracts literal triplet facts that conform to the allowed type ontology,
     counts their frequencies, and returns the top 'pool_size' elements with weights.
@@ -268,7 +268,7 @@ def sample_grouped_schemas(grouped_templates, n=10):
     """
     # The true distribution of lengths from the FIRE dataset
     length_options = [1, 2, 3, 4, 5]
-    length_weights = [30.5, 26.8, 20.2, 14.6, 8.0]
+    length_weights = [30.11, 28.29, 19.82, 14.28, 7.49]
 
     # 1. Decide the architecture (number of triplets) for the n sentences
     chosen_lengths = random.choices(length_options, weights=length_weights, k=n)
@@ -311,7 +311,7 @@ def save_template_schemas(templates_by_length, output_path):
 def get_density_blueprint(batch_size=10):
     triplet_targets = [1, 2, 3, 4, 5]
     # The true distribution of lengths from the FIRE dataset
-    length_weights = [30.5, 26.8, 20.2, 14.6, 8.0]
+    length_weights = [30.11, 28.29, 19.82, 14.28, 7.49]
 
     # Probabilistic sampling based on the FIRE distribution
     sampled_lengths = random.choices(
@@ -388,6 +388,9 @@ def main():
     file_name = args.output if args.output else f"{args.strategy}_synthetic_data.json"
     output_file = output_dir / file_name
 
+    generation_data_file = f"{Path(args.output).stem}_run_stats.json" if args.output else f"{args.strategy}_run_stats.json"
+    generation_file = output_dir / generation_data_file
+
     # Get the system prompt with the list of most used triplets
     cutoff = args.cutoff if args.cutoff is not None else 2.0
     allowed_ontology, schema_weights = build_system_prompt_schema(data, include_types=True, percentage_cutoff=cutoff)
@@ -398,7 +401,7 @@ def main():
 
     entity_pool, entity_weights = [], []
     if args.strategy == "entity":
-        entity_pool, entity_weights = build_global_entity_triplet_pool(data, allowed_ontology, pool_size=500)
+        entity_pool, entity_weights = build_global_entity_triplet_pool(data, allowed_ontology, pool_size=664)
 
     valid_pool = data
     if args.strategy == "few-shot":
@@ -529,7 +532,11 @@ def main():
         print(f"\nGeneration stopped/finished. Saving {len(all_generated_sentences)} sentences...")
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(all_generated_sentences, f, indent=4)
-        print(f"Success! Data saved to {output_file}")
+        print(f"Data saved to {output_file}")
+
+        with open(generation_file, "w", encoding="utf-8") as f:
+            json.dump(dict(run_stats), f, indent=4)
+        print(f"Stats saved to {generation_file}")
 
 if __name__ == "__main__":
     main()

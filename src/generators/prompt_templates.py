@@ -81,18 +81,18 @@ class PromptTemplates:
             JSON FORMAT:
             Output ONLY a valid JSON array. Do not include markdown blocks, explanations, or conversational text.
             [
-              {{
+              {
                 "text": "The generated natural English sentence.",
                 "triplets": [
-                  {{
-                    "subject": "The subject entity from sentence",
+                  {
+                    "subject": "The subject entity from the sentence",
                     "relation": "The Exact Relation Name from the template",
-                    "object": "The object entity from sentence",
+                    "object": "The object entity from the sentence",
                     "subject_type": "The exact Subject Type from the template",
                     "object_type": "The exact Object Type from the template"
-                  }}
+                  }
                 ]
-              }}
+              }
             ]
             
             IMPORTANT RULES:
@@ -117,11 +117,11 @@ class PromptTemplates:
                 "text": "The generated natural English sentence.",
                 "triplets": [
                   {{
-                    "subject": "The subject entity from sentence",
-                    "relation": "The Exact Relation Name from the ontology",
-                    "object": "The object entity from sentence",
-                    "subject_type": "The exact Subject Type from the ontology",
-                    "object_type": "The exact Object Type from the ontology"
+                    "subject": "The subject entity from the sentence",
+                    "relation": "The Exact Relation Name from the triplet",
+                    "object": "The object entity from the sentence",
+                    "subject_type": "The exact Subject Type from the triplet",
+                    "object_type": "The exact Object Type from the triplet"
                   }}
                 ]
               }}
@@ -129,7 +129,7 @@ class PromptTemplates:
 
             IMPORTANT RULES:
             1. FLUENT ENGLISH ONLY: NEVER insert the raw relation tokens (e.g., 'Actionto', 'actionin') or the Subject/Object types into the English sentence. You MUST express the relationship using natural, fluent English phrasing.
-            2. EXACT MATCHING: The 'subject' and 'object' values in your JSON MUST be exact substrings extracted from your generated sentence. The relation and subject/object types MUST be from the ontology.
+            2. EXACT MATCHING: The 'subject' and 'object' values in your JSON MUST be exact substrings extracted from your generated sentence. The relation and subject/object types MUST be from the Allowed Ontology.
             3. RESTRICTED VOCABULARY: You MUST ONLY use the specific entities provided in the batch list. Do not invent new company names, people, dates, or financial figures.
             4. STRICT ONTOLOGY: The relationships you establish between the entities MUST strictly comply with the [SubjectType] --(Relation)--> [ObjectType] rules listed in the Allowed Ontology below. Do not invent relations or mix types.
 
@@ -154,9 +154,9 @@ class PromptTemplates:
                 "text": "The generated natural English sentence.",
                 "triplets": [
                   {{
-                    "subject": "The subject entity from sentence",
+                    "subject": "The subject entity from the sentence",
                     "relation": "The Exact Relation Name from the triplet",
-                    "object": "The object entity from sentence",
+                    "object": "The object entity from the sentence",
                     "subject_type": "The exact Subject Type from the triplet",
                     "object_type": "The exact Object Type from the triplet"
                   }}
@@ -167,7 +167,7 @@ class PromptTemplates:
             IMPORTANT RULES:
             1. FLUENT ENGLISH ONLY: NEVER insert the raw relation tokens (e.g., 'Actionto', 'actionin') or the Subject/Object types into the English sentence. You MUST express the relationship using natural, fluent English phrasing.
             2. EXACT MATCHING: The 'subject' and 'object' values in your JSON MUST be exact substrings extracted from your generated sentence. The relation and subject/object types MUST be from the Allowed Ontology.
-            3. STRICT ONTOLOGY: You may ONLY use the exact [SubjectType] --(Relation)--> [ObjectType] combinations listed in the allowed ontology. Do not invent relations or mix types.
+            3. STRICT ONTOLOGY: You may ONLY use the exact [SubjectType] --(Relation)--> [ObjectType] combinations listed in the Allowed Ontology. Do not invent relations or mix types.
             
             ALLOWED ONTOLOGY:
             {schemas_formatted}
@@ -207,8 +207,8 @@ class PromptTemplates:
             {pool_string}
 
             EXECUTION RULES:
-            1. FREE STRUCTURE: You may freely choose how to connect these entities using any valid relations from the Allowed Ontology.
-            2. REUSE AND COMBINE: Constantly recombine these specific entities across the {n} sentences.
+            1. FREE STRUCTURE: You may freely choose how to connect these entities using any valid triplets from the Allowed Ontology.
+            2. REUSE AND COMBINE: You can reuse and recombine these specific entities across the {n} sentences.
             3. TRIPLET BLUEPRINT: For each sentence, use the following blueprint for the number of triplets:
             {density_blueprint}
             4. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
