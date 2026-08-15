@@ -380,7 +380,7 @@ def main():
     else:
         print("Using local provider")
         client = LocalClient(temperature=1.7)
-    data_path = Path("data") / "02_processed" / "fire_train_processed.json"
+    data_path = Path("data") / "02_processed" / "fire_all_processed.json"
     data = load_processed_data(data_path)
 
     output_dir = Path("data") / "03_synthetic"

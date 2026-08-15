@@ -6,25 +6,45 @@ from pathlib import Path
 from dataclasses import asdict
 from src.data_loader import load_fire_data, load_fire_types, load_markdown_data, load_rebel_data
 
-
-def prepare_fire_data():
-    raw_path_data = Path("data") / "01_raw" / "fire_train.json"
-
+def prepare_fire_data(output_filename="fire_all_processed.json"):
+    raw_dir = Path("data") / "01_raw"
     processed_dir = Path("data") / "02_processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
-    output_path_data = processed_dir / "fire_train_processed.json"
 
-    print("Loading and parsing raw FIRE data")
-    processed_data = load_fire_data(raw_path_data)
+    raw_files = ["fire_train.json", "fire_dev.json", "fire_test.json"]
+    combined_data = []
 
-    # Convert to dict
-    data_to_save = [asdict(sample) for sample in processed_data]
+    for filename in raw_files:
+        file_path = raw_dir / filename
+        if not file_path.exists():
+            print(f"Warning: File {file_path} not found. Skipping...")
+            continue
 
-    # Save into file
-    with open(output_path_data, 'w', encoding='utf-8') as f:
+        print(f"Loading {filename}...")
+        split_data = load_fire_data(file_path)
+        combined_data.extend(split_data)
+
+    print(f"\nTotal loaded samples across splits: {len(combined_data)}")
+
+    # Check for duplicate IDs
+    all_ids = [sample.id for sample in combined_data]
+    unique_ids = set(all_ids)
+    if len(all_ids) != len(unique_ids):
+        print(f"Found {len(all_ids) - len(unique_ids)} duplicate IDs across splits!")
+    else:
+        print("No duplicate IDs found across splits.")
+
+    # Sort by original ID
+    combined_data.sort(key=lambda sample: sample.id)
+
+    # Save processed output
+    data_to_save = [asdict(sample) for sample in combined_data]
+    output_path = processed_dir / output_filename
+
+    with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(data_to_save, f, indent=4)
 
-    print(f"Data saved to {output_path_data}")
+    print(f"Data saved to {output_path}\n")
 
 
 def prepare_fire_types():
