@@ -99,10 +99,12 @@ class GroqClient:
 
 class LocalClient:
     def __init__(self, temperature=1.3):
-        self.model = "llama3.3:70b"
+        #self.model = "llama3.3:70b"
+        self.model = "qwen2.5:72b"
         self.temperature = temperature
         self.url = "http://localhost:11434/api/chat"
         print(f"Set temperature to {self.temperature}")
+        print(f"Using model {self.model}")
 
     def test_connection(self):
         print(f"Testing local Ollama connection for {self.model}...")
@@ -110,10 +112,10 @@ class LocalClient:
             payload = {
                 "model": self.model,
                 "messages": [{"role": "user", "content": "Hi"}],
-                "options": {"max_tokens": 1},
+                "options": {"num_ctx": 4096, "max_tokens": 1},
                 "stream": False
             }
-            response = requests.post(self.url, json=payload, timeout=5)
+            response = requests.post(self.url, json=payload, timeout=120)
             if response.status_code == 200:
                 print("Connection Successful!")
             else:

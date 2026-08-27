@@ -414,7 +414,7 @@ def main():
     # Config
     target_dataset_size = 2000
     sentence_per_batch = 10
-    safety_buffer_percentage = 10
+    safety_buffer_percentage = 15
 
     total_target_sentences = target_dataset_size * (1 + safety_buffer_percentage / 100)
     num_of_batches = math.ceil(total_target_sentences / sentence_per_batch)
