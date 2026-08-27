@@ -9,9 +9,54 @@ from collections import Counter
 from src.data_loader import load_data_for_eval
 
 
+ALIAS_MAP_BASIC = {
+    # Corporate Titles
+    "chief executive officer": "ceo",
+    "chief financial officer": "cfo",
+    "chief operating officer": "coo",
+    "chief technology officer": "cto",
+
+    # Companies
+    "apple inc.": "apple",
+    "apple inc": "apple",
+    "microsoft corporation": "microsoft",
+    "alphabet inc.": "alphabet",
+    "alphabet inc": "alphabet",
+    "johnson & johnson": "johnson and johnson",
+
+    # Financial Terms
+    "s&p 500 index": "s&p 500",
+    "s&p 500": "s&p 500",
+}
+
+ALIAS_MAP_EXTENDED = {
+    **ALIAS_MAP_BASIC,  # Inherit basic mappings
+
+    # Generic Placeholders
+    "john doe": "[Generic Person Placeholder]",
+    "jane doe": "[Generic Person Placeholder]",
+    "john smith": "[Generic Person Placeholder]",
+    "jane smith": "[Generic Person Placeholder]",
+
+    # Generic Companies
+    "techcorp": "[Generic Company Placeholder]",
+    "megacorp": "[Generic Company Placeholder]",
+    "financialcorp": "[Generic Company Placeholder]",
+    "xyz corp": "[Generic Company Placeholder]",
+    "xyz corporation": "[Generic Company Placeholder]",
+    "abc corp": "[Generic Company Placeholder]",
+    "def corp": "[Generic Company Placeholder]",
+    "jkl corp": "[Generic Company Placeholder]",
+    "mno corp": "[Generic Company Placeholder]",
+}
+
 def evaluate_entities(synthetic_data, top_n=10, verbose=False):
-    subjects = [getattr(t, 'subject', '') for sample in synthetic_data for t in sample.triplets]
-    objects = [getattr(t, 'object', '') for sample in synthetic_data for t in sample.triplets]
+
+    def normalize_entity(entity):
+        return entity.strip().lower()
+
+    subjects = [normalize_entity(getattr(t, 'subject', '')) for sample in synthetic_data for t in sample.triplets]
+    objects = [normalize_entity(getattr(t, 'object', '')) for sample in synthetic_data for t in sample.triplets]
 
     subject_types = [getattr(t, 'subject_type', 'UNKNOWN') for sample in synthetic_data for t in sample.triplets]
     object_types = [getattr(t, 'object_type', 'UNKNOWN') for sample in synthetic_data for t in sample.triplets]
@@ -201,7 +246,7 @@ def main():
     if any(specific_flags):
         print("Running selected statistical evaluations...\n")
         if args.entities:
-            local_results["entities"] = evaluate_entities(data, top_n=10, verbose=args.verbose)
+            local_results["entities"] = evaluate_entities(data, top_n=50, verbose=args.verbose)
         if args.ontology:
             local_results["ontology"] = profile_ontology(data, include_types=has_types_helper(data), verbose=args.verbose)
         if args.triplet_density:
@@ -212,8 +257,8 @@ def main():
         print("No specific flags detected. Running all statistical evaluations by default...\n")
         local_results = run_all_statistical(data, verbose=args.verbose)
 
-    print("\n=== LOCAL RUN RESULTS ===")
-    print(json.dumps(local_results, indent=2))
+    #print("\n=== LOCAL RUN RESULTS ===")
+    #print(json.dumps(local_results, indent=2))
 
 if __name__ == "__main__":
     main()
