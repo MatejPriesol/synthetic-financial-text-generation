@@ -4,6 +4,7 @@ import json
 import os
 
 from collections import Counter
+from pathlib import Path
 
 from src.data_loader import load_data_for_eval
 from src.generators.llm_client import LocalClientEval
@@ -328,6 +329,11 @@ def main():
     parser.add_argument("--blueprint-adherence", action="store_true", help="Run only triplet blueprint adherence")
 
     args = parser.parse_args()
+
+    if "03_synthetic" not in Path(args.data).parts:
+        print(
+            "\n[INFO] Non-synthetic dataset detected. Skipping Adequacy evaluation as it requires prompt constraints.")
+        return
 
     data, sentences = load_data_for_eval(args.data)
 

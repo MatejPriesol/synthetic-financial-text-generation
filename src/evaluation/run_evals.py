@@ -3,6 +3,8 @@ import json
 import torch
 import transformers
 
+from pathlib import Path
+
 from src.data_loader import load_data_for_eval
 
 from src.evaluation.perplexity import run_all_perplexity
@@ -57,7 +59,13 @@ def main():
         allowed_schemas_template = json.load(f)
 
     is_template, is_entity = get_type_of_data(data)
-    schemas_to_save = allowed_schemas_template if is_template else allowed_schemas
+
+    if is_template:
+        schemas_to_save = allowed_schemas_template
+    elif is_entity:
+        schemas_to_save = allowed_schemas
+    else:
+        schemas_to_save = []
 
     if args.verbose:
         print(f"Verbose flag enabled, detailed evaluation results will be printed.\n")
@@ -109,7 +117,7 @@ def main():
 
         final_results["Diversity"] = run_all_diversity(sentences, args.verbose)
 
-    if args.all or args.adequacy:
+    if (args.all or args.adequacy) and "03_synthetic" in Path(args.data).parts:
         if args.verbose:
             print("\n\n=== Running Adequacy Evals ===\n")
         else:
