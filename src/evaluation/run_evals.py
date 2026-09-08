@@ -60,11 +60,9 @@ def main():
 
     is_template, is_entity = get_type_of_data(data)
 
-    if is_template:
-        schemas_to_save = allowed_schemas_template
-    elif is_entity:
-        schemas_to_save = allowed_schemas
-    else:
+    schemas_to_save = allowed_schemas_template if is_template else allowed_schemas
+
+    if "02_processed" in Path(args.data).parts:
         schemas_to_save = []
 
     if args.verbose:
