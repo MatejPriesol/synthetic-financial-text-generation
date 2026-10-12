@@ -50,10 +50,16 @@ ALIAS_MAP_EXTENDED = {
     "mno corp": "[Generic Company Placeholder]",
 }
 
-def evaluate_entities(synthetic_data, top_n=10, verbose=False):
+def evaluate_entities(synthetic_data, top_n=10, verbose=False, alias_mode=None):
 
     def normalize_entity(entity):
-        return entity.strip().lower()
+        cleaned = entity.strip().lower()
+        if alias_mode == "extended":
+            return ALIAS_MAP_EXTENDED.get(cleaned, cleaned)
+        elif alias_mode == "basic":
+            return ALIAS_MAP_BASIC.get(cleaned, cleaned)
+
+        return cleaned
 
     subjects = [normalize_entity(getattr(t, 'subject', '')) for sample in synthetic_data for t in sample.triplets]
     objects = [normalize_entity(getattr(t, 'object', '')) for sample in synthetic_data for t in sample.triplets]
@@ -206,8 +212,8 @@ def has_types_helper(data):
         return bool(subject_type_val)
 
 
-def run_all_statistical(data, save_name=None, verbose=False):
-    results = {"entities": evaluate_entities(synthetic_data=data, top_n=10, verbose=verbose),
+def run_all_statistical(data, save_name=None, verbose=False, alias_mode=None):
+    results = {"entities": evaluate_entities(synthetic_data=data, top_n=10, verbose=verbose, alias_mode=alias_mode),
                "ontology": profile_ontology(data, include_types=has_types_helper(data), verbose=verbose)}
 
     plot_filepath = f"output/diversity_plots/{save_name}_triplet_density.png" if save_name else None
@@ -224,6 +230,8 @@ def main():
     parser = argparse.ArgumentParser(description="Statistical Evaluation Local Runner")
     parser.add_argument("--data", type=str, required=True, help="Path to the dataset")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed results")
+    parser.add_argument("--alias-mode", type=str, choices=["none", "basic", "extended"], default="none",
+                        help="Apply alias mapping for entities (default: none)")
 
     # Specific eval flags
     parser.add_argument("--entities", action="store_true", help="Run only entity distribution")
@@ -233,6 +241,8 @@ def main():
     args = parser.parse_args()
 
     data, sentences = load_data_for_eval(args.data)
+
+    alias_mode = None if args.alias_mode == "none" else args.alias_mode
 
     specific_flags = [
         args.entities,
@@ -246,7 +256,7 @@ def main():
     if any(specific_flags):
         print("Running selected statistical evaluations...\n")
         if args.entities:
-            local_results["entities"] = evaluate_entities(data, top_n=50, verbose=args.verbose)
+            local_results["entities"] = evaluate_entities(data, top_n=10, verbose=args.verbose, alias_mode=alias_mode)
         if args.ontology:
             local_results["ontology"] = profile_ontology(data, include_types=has_types_helper(data), verbose=args.verbose)
         if args.triplet_density:
@@ -255,10 +265,10 @@ def main():
     # If all specific flags are False, default to running everything
     else:
         print("No specific flags detected. Running all statistical evaluations by default...\n")
-        local_results = run_all_statistical(data, verbose=args.verbose)
+        local_results = run_all_statistical(data, verbose=args.verbose, alias_mode=alias_mode)
 
-    #print("\n=== LOCAL RUN RESULTS ===")
-    #print(json.dumps(local_results, indent=2))
+    print("\n=== LOCAL RUN RESULTS ===")
+    print(json.dumps(local_results, indent=2))
 
 if __name__ == "__main__":
     main()
