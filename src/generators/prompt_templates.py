@@ -206,37 +206,3 @@ class PromptTemplates:
         """).strip()
 
         return prompt_template.format(n=n, density_blueprint=density_blueprint)
-
-
-    """
-    EVALUATION PROMPTS
-    """
-    @staticmethod
-    def adequacy_eval_system_prompt():
-        return dedent("""
-        You are an expert linguistic evaluator for a financial dataset.
-        Your task is to evaluate how well a generated English sentence expresses a specific knowledge graph triplet.
-        
-        IMPORTANT CONTEXT:
-        The triplet represents underlying factual concepts and relationships. The sentence does NOT need to use the exact literal strings or vocabulary of the triplet, as long as the semantic meaning, factual accuracy, and relationship are perfectly conveyed in natural English.
-
-        Evaluation Criteria (Relational Fidelity & Fluency):
-        5 - Perfect: Subject, object, and relation are expressed perfectly in natural English.
-        4 - Good: Facts are present but phrasing is slightly awkward.
-        3 - Forced: Facts are present, but the raw relation token is unnaturally injected into the text.
-        2 - Partial/Wrong: Sentence misses the relation, or hallucinates wrong relationships.
-        1 - Failure: Sentence completely fails to include the triplet facts.
-
-        Provide ONLY a single integer between 1 and 5. Do not provide any other text.
-        """).strip()
-
-    @staticmethod
-    def adequacy_eval_user_prompt(triplet, sentence):
-        return dedent(f"""
-        Triplet to express:
-        Subject: {triplet.get('subject')} (Type: [{triplet.get('subject_type')}])
-        Relation: {triplet.get('relation')}
-        Object: {triplet.get('object')} (Type: [{triplet.get('object_type')}])
-        
-        Generated Sentence: "{sentence}"
-        """).strip()

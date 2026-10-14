@@ -1,4 +1,3 @@
-import re
 import argparse
 import json
 
@@ -6,83 +5,6 @@ from collections import Counter
 from pathlib import Path
 
 from src.data_loader import load_data_for_eval
-from src.generators.llm_client import LocalClientEval
-from src.generators.prompt_templates import PromptTemplates
-
-
-llm_judge = LocalClientEval(
-    model="qwen2.5:72b",
-    temperature=0.0
-)
-
-
-def get_g_eval_score(triplet, sentence):
-
-    system_prompt = PromptTemplates.adequacy_eval_system_prompt()
-    user_prompt = PromptTemplates.adequacy_eval_user_prompt(triplet, sentence)
-
-    # Use your custom client!
-    result_text = llm_judge.generate_message(system_prompt, user_prompt)
-
-    if not result_text:
-        return 0
-
-    # Extract the integer from the response
-    match = re.search(r'\d', result_text)
-    if match:
-        return int(match.group())
-    else:
-        return 0
-
-
-def evaluate_llm_as_judge(data, verbose=False):
-    total_sentence_score = 0
-    valid_sentences = 0
-    triplet_score_distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
-
-    if verbose:
-        print(f"\nRunning LLM-as-a-Judge Evaluation using {llm_judge.model}...")
-
-    for sample in data:
-        sentence = getattr(sample, 'sentence', None)
-        triplets = getattr(sample, 'triplets', [])
-
-        if not sentence or not triplets:
-            continue
-
-        sentence_triplet_scores = []
-
-        for triplet in triplets:
-            triplet_dict = {
-                "subject": getattr(triplet, 'subject', ''),
-                "relation": getattr(triplet, 'relation', ''),
-                "object": getattr(triplet, 'object', ''),
-                "subject_type": getattr(triplet, 'subject_type', 'UNKNOWN'),
-                "object_type": getattr(triplet, 'object_type', 'UNKNOWN')
-            }
-
-            score = get_g_eval_score(triplet_dict, sentence)
-
-            if score > 0:
-                sentence_triplet_scores.append(score)
-                triplet_score_distribution[score] = triplet_score_distribution.get(score, 0) + 1
-
-                if verbose and score <= 3:
-                    print(f"Low Triplet Score ({score}/5):\n  Sentence: {sentence}\n  Triplet: {triplet_dict}\n")
-
-        if sentence_triplet_scores:
-            avg_sentence_score = sum(sentence_triplet_scores) / len(sentence_triplet_scores)
-            total_sentence_score += avg_sentence_score
-            valid_sentences += 1
-
-    overall_avg = (total_sentence_score / valid_sentences) if valid_sentences > 0 else 0
-
-    return {
-        "average_sentence_adequacy": round(overall_avg, 3),
-        "triplet_score_distribution": triplet_score_distribution,
-        "total_sentences_evaluated": valid_sentences,
-        "total_triplets_evaluated": sum(triplet_score_distribution.values())
-    }
 
 
 def evaluate_template_adherence(data, verbose=False):
@@ -148,13 +70,13 @@ def evaluate_template_adherence(data, verbose=False):
     hallucinated_schema_count = total_generated_triplets - total_matched_triplets
 
     return {
-        "Per_sentence_percentage": round(strict_score, 2),
-        "Per_triplet_recall_percentage": round(yield_score, 2),
-        "Per_triplet_precision_percentage": round(precision_score, 2),
-        "Total_sentences_checked": total_valid_sentences,
-        "Total_triplets_requested": total_requested_triplets,
-        "Total_triplets_matched": total_matched_triplets,
-        "Total_unrequested_triplets": hallucinated_schema_count
+        "per_sentence_percentage": round(strict_score, 2),
+        "per_triplet_recall_percentage": round(yield_score, 2),
+        "per_triplet_precision_percentage": round(precision_score, 2),
+        "total_sentences_checked": total_valid_sentences,
+        "total_triplets_requested": total_requested_triplets,
+        "total_triplets_matched": total_matched_triplets,
+        "total_unrequested_triplets": hallucinated_schema_count
     }
 
 def evaluate_entity_adherence(data, verbose=False):
@@ -204,13 +126,12 @@ def evaluate_entity_adherence(data, verbose=False):
     token_score = (total_adherent_entities / total_generated_entities) * 100 if total_generated_entities > 0 else 0
 
     return {
-        "Per_sentence_percentage": round(strict_score, 2),
-        "Per_entity_precision_percentage": round(token_score, 2),
+        "per_sentence_percentage": round(strict_score, 2),
+        "per_entity_precision_percentage": round(token_score, 2),
         "total_sentences_checked": total_valid_sentences,
         "total_entities_checked": total_generated_entities,
         "total_entities_adherent": total_adherent_entities
     }
-
 
 def evaluate_blueprint_adherence(data):
     total = 0
@@ -320,7 +241,6 @@ def main():
     parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed results")
 
     # Specific eval flags
-    parser.add_argument("--llm-judge", action="store_true", help="Run only LLM Judge")
     parser.add_argument("--template-adherence", action="store_true", help="Run only template adherence")
     parser.add_argument("--entity-adherence", action="store_true", help="Run only entity adherence")
     parser.add_argument("--surface-form", action="store_true", help="Run surface form copying eval")
@@ -345,7 +265,6 @@ def main():
         allowed_schemas_template = json.load(f)
 
     specific_flags = [
-        args.llm_judge,
         args.template_adherence,
         args.entity_adherence,
         args.surface_form,
@@ -360,8 +279,6 @@ def main():
     # If any of the specific flags are True, only run those
     if any(specific_flags):
         print("Running selected adequacy evaluations...\n")
-        #if args.llm_judge:
-        #    local_results["llm_judge"] = evaluate_llm_as_judge(data, verbose=args.verbose)
         if args.template_adherence and is_template:
             local_results["template_adherence"] = evaluate_template_adherence(data, verbose=args.verbose)
         if args.entity_adherence and is_entity:
