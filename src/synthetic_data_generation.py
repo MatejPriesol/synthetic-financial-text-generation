@@ -1,5 +1,4 @@
 import json
-import time
 import random
 import math
 import argparse
@@ -7,7 +6,6 @@ import concurrent.futures
 
 from tqdm import tqdm
 from pathlib import Path
-from collections import Counter
 
 from src.generators.llm_client import GroqClient, LocalClient
 from src.generators.prompt_templates import PromptTemplates
@@ -334,11 +332,9 @@ def prepare_batch_prompts(strategy, valid_pool, allowed_ontology, schema_weights
     user_prompt = ""
 
     if strategy == "template":
-        #chosen_schemas = sample_schemas(allowed_schemas, schema_weights, n=sentence_per_batch)
-        # user_prompt = PromptTemplates.get_user_prompt_template(chosen_schemas)
         system_prompt = PromptTemplates.get_system_prompt_template()
         chosen_schemas = sample_grouped_schemas(grouped_templates, n=sentence_per_batch)
-        user_prompt = PromptTemplates.get_user_prompt_template_new(chosen_schemas)
+        user_prompt = PromptTemplates.get_user_prompt_template(chosen_schemas)
         blueprint_counts = [len(schema_tuple) for schema_tuple in chosen_schemas]
 
     elif strategy == "entity":

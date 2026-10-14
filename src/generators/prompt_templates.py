@@ -6,73 +6,6 @@ class PromptTemplates:
     SYSTEM PROMPTS
     """
     @staticmethod
-    def get_system_prompt_with_template(allowed_schemas):
-        schemas_formatted = ", ".join(allowed_schemas)
-
-        return dedent(f"""
-            You are an expert synthetic data generator for financial relation extraction for the purpose of knowledge base generation. Your task is to generate financial news sentences with corresponding triplets. 
-    
-            Important instructions:
-            1) Do NOT include any explanation or additional text, only the generated sentence and triplets.
-            2) Do NOT use literal newlines or line breaks inside string values. Keep all text on a single line.
-            3) You MUST return a valid JSON array of the following format:
-            [
-              {{
-                "text": "The generated financial news sentence.",
-                "triplets": [
-                  {{
-                    "subject": "Subject Entity",
-                    "relation": "ExactRelationName",
-                    "object": "Object Entity",
-                    "subject_type": "Type of the subject",
-                    "object_type": "Type of the object"
-                  }}
-                ]
-              }}
-            ]
-            4) The sentence can have multiple triplets and you are allowed to generate compound sentences. 
-            5) For the triplets:
-               - "subject" and "object" MUST be the exact words or phrases used in the sentence.
-               - "subject_type" and "object_type" MUST exactly match the bracketed types from the allowed structures.
-               - "relation" MUST exactly match the relation in parentheses from the allowed structures.
-            6) You are ONLY allowed to use the following [SubjectType] --(Relation)--> [ObjectType] structures. Do not invent new relations or mix entity types that are not explicitly defined below.
-            7) CRITICAL GRAMMAR RULE: The 'relation' in your JSON must exactly match the allowed list, but in the generated 'text' sentence, you MUST express this relation using natural, fluent English.\n
-            ALLOWED STRUCTURES:
-            {schemas_formatted}
-        """).strip()
-
-    @staticmethod
-    def get_system_prompt_with_fixed_templates():
-        return dedent("""
-            You are an expert synthetic data generator for financial relation extraction for the purpose of knowledge base generation. Your task is to generate financial news sentences with corresponding triplets. 
-
-            Important instructions:
-            1) Do NOT include any explanation or additional text, only the generated sentence and triplets.
-            2) Do NOT use literal newlines or line breaks inside string values. Keep all text on a single line.
-            3) You MUST return a valid JSON array of the following format:
-            [
-              {
-                "text": "The generated financial news sentence.",
-                "triplets": [
-                  {
-                    "subject": "Subject Entity",
-                    "relation": "ExactRelationName",
-                    "object": "Object Entity",
-                    "subject_type": "Type of the subject",
-                    "object_type": "Type of the object"
-                  }
-                ]
-              }
-            ]
-            4) The sentence can have multiple triplets and you are allowed to generate compound sentences. 
-            5) For the triplets:
-               - "subject" and "object" MUST be the exact words or phrases used in the sentence.
-               - "subject_type", "object_type", and "relation" MUST exactly match the bracketed types and parentheses from the specific schema requested by the user.
-            6) You will be given [SubjectType] --(Relation)--> [ObjectType] structures. Do not invent new relations or mix entity types that are not explicitly defined in the user's request.
-            7) CRITICAL GRAMMAR RULE: The 'relation' in your JSON must exactly match the schema list, but in the generated 'text' sentence, you MUST express this relation using natural, fluent English.
-        """).strip()
-
-    @staticmethod
     def get_system_prompt_template():
         return dedent("""
             You are an expert synthetic data generator for financial Knowledge Graphs.
@@ -180,22 +113,36 @@ class PromptTemplates:
     USER PROMPTS
     """
     @staticmethod
-    def get_user_prompt_template_based(schemas):
+    def get_user_prompt_template(schemas):
         n = len(schemas)
 
-        # Format the forced schemas into a clean, numbered list
-        schema_list = "\n".join([f"Sentence {i + 1}: {schema}" for i, schema in enumerate(schemas)])
+        # Format the tuples into a comma-separated string for the prompt
+        schema_lines = []
+        for i, schema_tuple in enumerate(schemas):
+            joined_triplets = ", ".join(schema_tuple)
+            schema_lines.append(f"{i + 1}. Template Set: {joined_triplets}")
 
-        return (
-            f"Please generate {n} unique financial sentences.\n\n"
-            f"You MUST follow this exact 1-to-1 mapping for the primary triplet in each sentence:\n"
-            f"{schema_list}\n\n"
-            f"CRITICAL RULES:\n"
-            f"- Sentence 1 MUST contain a triplet matching the schema for Sentence 1.\n"
-            f"- Sentence 2 MUST contain a triplet matching the schema for Sentence 2, and so on.\n"
-            f"- You may include additional valid financial triplets in the sentences if it sounds natural, but the requested schema MUST be the core of the sentence.\n"
-            f"- Ensure high diversity in sentence structures, length, vocabulary, and financial contexts to avoid repetition."
-        )
+        schema_list = "\n".join(schema_lines)
+
+        prompt_template = dedent("""
+                TASK: Generate a batch of {n} unique, highly realistic financial sentences.
+
+                REQUIRED BATCH MAPPING:
+                You MUST follow the following mapping. Sentence 1 MUST be built around Template Set 1, Sentence 2 around Template Set 2, and so on. 
+
+                {schema_list}
+
+                EXECUTION RULES:
+                1. TEMPLATE INTEGRATION: The requested Template Set contains one or more relation triplets. You MUST use ALL triplets in the assigned set as the core factual foundation of the sentence. 
+                   - You do NOT need to present the facts in the exact order they are listed. 
+                   - Integrate them so the semantic meaning is naturally woven together into a single, cohesive sentence.
+                2. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
+                   - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
+                   - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
+                   - Vary the sentence lengths and complexity (mix shorter and longer sentences).
+            """).strip()
+
+        return prompt_template.format(n=n, schema_list=schema_list)
 
     @staticmethod
     def get_user_prompt_entity(pool_string, density_blueprint, n=10):
@@ -218,62 +165,6 @@ class PromptTemplates:
         """).strip()
 
         return prompt_entity_user.format(n=n, pool_string=pool_string, density_blueprint=density_blueprint)
-
-    @staticmethod
-    def get_user_prompt_template(schemas):
-        n = len(schemas)
-        schema_list = "\n".join([f"{i + 1}. Template: {schema}" for i, schema in enumerate(schemas)])
-
-        prompt_template = dedent("""
-            TASK: Generate a batch of {n} unique, highly realistic financial sentences.
-    
-            REQUIRED BATCH MAPPING:
-            You MUST follow this exact 1-to-1 mapping. Sentence 1 must be built around Template 1, Sentence 2 around Template 2, and so on. 
-    
-            {schema_list}
-    
-            EXECUTION RULES:
-            1. TEMPLATE INTEGRATION: The requested Template must act as the core factual foundation of the sentence. 
-            2. COMPLEXITY: As instructed in the system rules, naturally weave in additional valid triplets from the Allowed Ontology to meet the density requirements.
-            3. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
-               - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
-               - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
-               - Vary the sentence lengths (mix shorter and longer sentences with multiple valid triplets).
-        """).strip()
-
-        return prompt_template.format(n=n, schema_list=schema_list)
-
-    @staticmethod
-    def get_user_prompt_template_new(schemas):
-        n = len(schemas)
-
-        # Format the tuples into a comma-separated string for the prompt
-        schema_lines = []
-        for i, schema_tuple in enumerate(schemas):
-            joined_triplets = ", ".join(schema_tuple)
-            schema_lines.append(f"{i + 1}. Template Set: {joined_triplets}")
-
-        schema_list = "\n".join(schema_lines)
-
-        prompt_template = dedent("""
-            TASK: Generate a batch of {n} unique, highly realistic financial sentences.
-
-            REQUIRED BATCH MAPPING:
-            You MUST follow the following mapping. Sentence 1 MUST be built around Template Set 1, Sentence 2 around Template Set 2, and so on. 
-
-            {schema_list}
-
-            EXECUTION RULES:
-            1. TEMPLATE INTEGRATION: The requested Template Set contains one or more relation triplets. You MUST use ALL triplets in the assigned set as the core factual foundation of the sentence. 
-               - You do NOT need to present the facts in the exact order they are listed. 
-               - Integrate them so the semantic meaning is naturally woven together into a single, cohesive sentence.
-            2. DIVERSITY: You are generating batch data. You MUST use variety in your writing. 
-               - Do NOT start sentences with the same grammatical structures (e.g., avoid starting multiple sentences with "The", "In [Year]", or "Company X").
-               - Vary the financial contexts (e.g., Annual reports, quarterly earnings, regulatory fines...).
-               - Vary the sentence lengths and complexity (mix shorter and longer sentences).
-        """).strip()
-
-        return prompt_template.format(n=n, schema_list=schema_list)
 
     @staticmethod
     def get_user_prompt_few_shot(n, examples, density_blueprint):

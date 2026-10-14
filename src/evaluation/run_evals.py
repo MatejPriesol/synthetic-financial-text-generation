@@ -6,8 +6,6 @@ import transformers
 from pathlib import Path
 
 from src.data_loader import load_data_for_eval
-
-from src.evaluation.perplexity import run_all_perplexity
 from src.evaluation.grammatical_correctness import run_all_grammar
 from src.evaluation.statistical import run_all_statistical
 from src.evaluation.diversity import run_all_diversity
