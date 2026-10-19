@@ -1,3 +1,10 @@
+"""
+Diversity Evaluation Module.
+
+This module measures semantic and surface-level diversity across generated sentences
+using Self-BLEU, n-gram uniqueness ratios, and Sentence-BERT cosine similarity measures.
+"""
+
 import torch
 import nltk
 import argparse
@@ -11,8 +18,10 @@ from collections import Counter
 
 from src.data_loader import load_data_for_eval
 
-
 def evaluate_self_bleu(sentences, num_hypothesis_to_test=200, verbose=False):
+    """
+    Calculates Self-BLEU scores across generated sentences to quantify n-gram overlap.
+    """
     tokenized_sentences = [nltk.word_tokenize(text.lower()) for text in sentences]
     num_sentences = len(tokenized_sentences)
 
@@ -64,9 +73,10 @@ def evaluate_self_bleu(sentences, num_hypothesis_to_test=200, verbose=False):
         "self_bleu_4": round(avg_bleu_4, 4)
     }
 
-
 def evaluate_ngrams_words(sentences, n=3, top_k=10, verbose=False):
-
+    """
+    Calculates total n-gram frequency, unique n-gram counts, and uniqueness ratios.
+    """
     all_ngrams = []
 
     for text in sentences:
@@ -97,6 +107,9 @@ def evaluate_ngrams_words(sentences, n=3, top_k=10, verbose=False):
     }
 
 def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
+    """
+    Computes SBERT-based all-pairs cosine similarity and closest-match similarity metrics.
+    """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
@@ -180,6 +193,7 @@ def run_all_diversity(sentences, verbose=False):
     module_results["self_bleu"] = evaluate_self_bleu(sentences, verbose=verbose)
 
     return module_results
+
 
 def main():
     parser = argparse.ArgumentParser(description="Diversity Evaluation Local Runner")

@@ -1,3 +1,11 @@
+"""
+Adequacy Evaluation Module.
+
+This module evaluates how accurately generated text satisfies prompt-level constraints,
+including template set matching, entity pool adherence, blueprint triplet count compliance,
+and ontological schema validity.
+"""
+
 import argparse
 import json
 
@@ -6,8 +14,10 @@ from pathlib import Path
 
 from src.data_loader import load_data_for_eval
 
-
 def evaluate_template_adherence(data, verbose=False):
+    """
+    Evaluates per-sentence and per-triplet precision/recall against requested template sets.
+    """
     # Sentence-level trackers (Strict)
     sentence_match_count = 0
     total_valid_sentences = 0
@@ -80,7 +90,9 @@ def evaluate_template_adherence(data, verbose=False):
     }
 
 def evaluate_entity_adherence(data, verbose=False):
-    """Verifies that the generated literal subjects/objects exist in the requested pool."""
+    """
+    Verifies whether generated entities exist within the requested literal entity pool.
+    """
     sentence_match_count = 0
     total_valid_sentences = 0
     total_generated_entities = 0
@@ -134,6 +146,9 @@ def evaluate_entity_adherence(data, verbose=False):
     }
 
 def evaluate_blueprint_adherence(data):
+    """
+    Measures adherence to requested per-sentence triplet count blueprints.
+    """
     total = 0
     passed = 0
     for sample in data:
@@ -148,6 +163,9 @@ def evaluate_blueprint_adherence(data):
     return {"triplet_blueprint_adherence": score}
 
 def evaluate_surface_form_copying(data):
+    """
+    Measures literal relation string copying within generated sentences.
+    """
     copied_count = 0
     total = 0
 
@@ -167,8 +185,10 @@ def evaluate_surface_form_copying(data):
         "total_copied_literally": copied_count
     }
 
-
 def evaluate_schema_compliance(data, allowed_ontology, allowed_schemas_template, template=False):
+    """
+    Evaluates compliance with allowed ontological schemas and identifies hallucinated relations.
+    """
     total_triplets = 0
     compliant_count = 0
     hallucination_counts = {}
@@ -202,6 +222,9 @@ def evaluate_schema_compliance(data, allowed_ontology, allowed_schemas_template,
     }
 
 def get_type_of_data(data):
+    """
+    Identifies whether prompt constraints represent template sets or literal entity pools.
+    """
     is_template = False
     is_entity = False
 
@@ -289,7 +312,6 @@ def main():
             local_results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas, allowed_schemas_template, is_template)
         if args.blueprint_adherence:
             local_results["blueprint_adherence"] = evaluate_blueprint_adherence(data)
-
 
     # If all specific flags are False, default to running everything
     else:

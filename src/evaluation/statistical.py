@@ -1,13 +1,19 @@
+"""
+Statistical Evaluation Module.
+
+This module extracts empirical frequency distributions across generated entities,
+subject/object types, relation schemas, and per-sentence triplet counts.
+"""
+
 import argparse
 import json
 import os
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 from collections import Counter
-from src.data_loader import load_data_for_eval
 
+from src.data_loader import load_data_for_eval
 
 ALIAS_MAP_BASIC = {
     # Corporate Titles
@@ -51,6 +57,9 @@ ALIAS_MAP_EXTENDED = {
 }
 
 def evaluate_entities(synthetic_data, top_n=10, verbose=False, alias_mode=None):
+    """
+    Evaluates entity frequency distributions and top entity types across generated samples.
+    """
 
     def normalize_entity(entity):
         cleaned = entity.strip().lower()
@@ -104,6 +113,9 @@ def evaluate_entities(synthetic_data, top_n=10, verbose=False, alias_mode=None):
     }
 
 def profile_ontology(data, include_types=False, top_n=10, verbose=False):
+    """
+    Profiles the usage frequencies of relation types and full ontological schemas.
+    """
     schema_elements = []
     relation_elements = []
 
@@ -149,6 +161,9 @@ def profile_ontology(data, include_types=False, top_n=10, verbose=False):
     }
 
 def evaluate_triplet_density(data, save_plot_path=None, verbose=False):
+    """
+    Calculates summary statistics and empirical distribution of triplet counts per sentence.
+    """
     triplet_counts = [len(getattr(sample, 'triplets', [])) for sample in data]
 
     if not triplet_counts:
@@ -177,7 +192,7 @@ def evaluate_triplet_density(data, save_plot_path=None, verbose=False):
         for k, v in distribution.items():
             print(f"  {k} triplets: {v} sentences ({distribution_percentages[f'{k}_triplets']}%)")
 
-    # Generate and save the plot silently
+    # Generate and save the plot
     if save_plot_path:
         # Ensure the output directory exists
         os.makedirs(os.path.dirname(save_plot_path), exist_ok=True)
@@ -204,8 +219,10 @@ def evaluate_triplet_density(data, save_plot_path=None, verbose=False):
         "percentages": distribution_percentages
     }
 
-# Check if it contains the types (under the assumption that if the first one does, they all do) for the ontology
 def has_types_helper(data):
+    """
+    Checks whether extracted sample triplets contain subject and object entity types.
+    """
     if len(data) > 0 and len(data[0].triplets) > 0:
         first_triplet = data[0].triplets[0]
         subject_type_val = getattr(first_triplet, 'subject_type', None)
@@ -225,6 +242,7 @@ def run_all_statistical(data, save_name=None, verbose=False, alias_mode=None):
     )
 
     return results
+
 
 def main():
     parser = argparse.ArgumentParser(description="Statistical Evaluation Local Runner")

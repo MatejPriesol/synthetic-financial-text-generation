@@ -1,3 +1,11 @@
+"""
+Grammatical Correctness Evaluation Module
+
+This module evaluates the linguistic acceptability of generated sentences using
+a RoBERTa model fine-tuned on the Corpus of Linguistic Acceptability (CoLA).
+It returns confidence scores representing how grammatically natural the text is.
+"""
+
 import torch
 import argparse
 import json
@@ -7,8 +15,10 @@ from transformers import pipeline
 
 from src.data_loader import load_data_for_eval
 
-
 def evaluate_grammatical_correctness(sentences, verbose=False):
+    """
+    Evaluates a list of sentences for grammatical correctness.
+    """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     grammar_checker = pipeline(

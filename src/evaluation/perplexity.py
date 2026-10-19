@@ -1,3 +1,15 @@
+"""
+Perplexity Evaluation Module.
+
+This script calculates the perplexity of generated text using a pre-trained GPT-2 model.
+It evaluates how "surprising" or predictable the synthetic sentences are. Higher perplexity
+generally indicates less predictable/more diverse text, while very low perplexity suggests
+repetitive or highly generic generation.
+
+Note: This evaluation is excluded from the main script and is not run automatically.
+Local evaluation is still possible within this script.
+"""
+
 import torch
 import argparse
 import json
@@ -7,12 +19,13 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 from src.data_loader import load_data_for_eval
 
-
-
 def evaluate_perplexity(sentences, verbose=False):
+    """
+    Evaluates the perplexity of a list of sentences using GPT-2.
+    """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    # Load model (for now GPT-2, later I will try Llama 3.1.-8B)
+    # Load model
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
     model = GPT2LMHeadModel.from_pretrained('gpt2').to(device)
     model.eval()  # Set to evaluation mode
@@ -23,7 +36,6 @@ def evaluate_perplexity(sentences, verbose=False):
         for text in sentences:
             # Skip empty sentences (shouldn't be the case)
             if not text.strip() and verbose:
-                #print("Empty sentence!")
                 continue
 
             # Tokenize the sentence
@@ -32,7 +44,6 @@ def evaluate_perplexity(sentences, verbose=False):
 
             # Skip just in case there's one word (shouldn't be the case)
             if (input_ids.size(1) < 2) and verbose:
-                #print("One word sentence!")
                 continue
 
             # Negative log-likelihood

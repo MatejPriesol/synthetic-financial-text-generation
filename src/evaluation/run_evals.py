@@ -1,3 +1,11 @@
+"""
+Master Evaluation Pipeline.
+
+This script runs the complete evaluation (Grammar, Statistical, Diversity,
+and Adequacy) on a target dataset and aggregates the results into a
+final JSON report.
+"""
+
 import argparse
 import json
 import torch
@@ -11,7 +19,6 @@ from src.evaluation.statistical import run_all_statistical
 from src.evaluation.diversity import run_all_diversity
 from src.evaluation.adequacy import run_all_adequacy, get_type_of_data
 
-
 # Silence Hugging Face's warnings
 transformers.logging.set_verbosity_error()
 
@@ -23,7 +30,6 @@ def main():
 
     # Which evals to run
     parser.add_argument("--all", action="store_true", help="Run ALL evaluations")
-    parser.add_argument("--perplexity", action="store_true", help="Run Perplexity eval")
     parser.add_argument("--grammar", action="store_true", help="Run Grammar eval")
     parser.add_argument("--stats", action="store_true", help="Run Statistical evals")
     parser.add_argument("--diversity", action="store_true", help="Run Diversity evals")
@@ -80,14 +86,6 @@ def main():
             }
         }
     }
-
-    if args.all or args.perplexity:
-        if args.verbose:
-            print("\n\n=== Running Perplexity Evals  ===\n")
-        else:
-            print("Running Perplexity Evals ...")
-
-        #final_results["Perplexity"] = run_all_perplexity(sentences, args.verbose)
 
     if args.all or args.grammar:
         if args.verbose:
@@ -148,7 +146,6 @@ def main():
 
         with open(save_path, "w", encoding="utf-8") as f:
             json.dump(final_results, f, indent=4)
-
 
 if __name__ == "__main__":
     main()
