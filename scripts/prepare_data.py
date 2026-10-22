@@ -17,12 +17,16 @@ def prepare_fire_data(output_filename="fire_all_processed.json"):
     for filename in raw_files:
         file_path = raw_dir / filename
         if not file_path.exists():
-            print(f"Warning: File {file_path} not found. Skipping...")
+            print(f"[WARNING] File {file_path} not found. Skipping...")
             continue
 
         print(f"Loading {filename}...")
         split_data = load_fire_data(file_path)
         combined_data.extend(split_data)
+
+    if not combined_data:
+        print("[WARNING] No FIRE data was loaded. Skipping processing.")
+        return
 
     print(f"\nTotal loaded samples across splits: {len(combined_data)}")
 
@@ -30,7 +34,7 @@ def prepare_fire_data(output_filename="fire_all_processed.json"):
     all_ids = [sample.id for sample in combined_data]
     unique_ids = set(all_ids)
     if len(all_ids) != len(unique_ids):
-        print(f"Found {len(all_ids) - len(unique_ids)} duplicate IDs across splits!")
+        print(f"Found {len(all_ids) - len(unique_ids)} duplicate IDs across splits")
     else:
         print("No duplicate IDs found across splits.")
 
@@ -49,6 +53,10 @@ def prepare_fire_data(output_filename="fire_all_processed.json"):
 
 def prepare_fire_types():
     raw_path_types = Path("data") / "01_raw" / "fire_types.json"
+
+    if not raw_path_types.exists():
+        print(f"[WARNING] File {raw_path_types} not found. Skipping FIRE types preparation...\n")
+        return
 
     processed_dir = Path("data") / "02_processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
@@ -74,6 +82,10 @@ def prepare_fire_types():
 def prepare_markdown_data(name, filename):
     raw_path = Path("data") / "01_raw" / f"{filename}"
 
+    if not raw_path.exists():
+        print(f"[WARNING] File {raw_path} not found. Skipping {name.title()} preparation...\n")
+        return
+
     processed_dir = Path("data") / "02_processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
     output_path_data = processed_dir / f"{name}_processed.json"
@@ -93,6 +105,10 @@ def prepare_markdown_data(name, filename):
 
 def prepare_rebel_data(name, filename):
     raw_path = Path("data") / "01_raw" / filename
+
+    if not raw_path.exists():
+        print(f"[WARNING] File {raw_path} not found. Skipping {name.title()} preparation...\n")
+        return
 
     processed_dir = Path("data") / "02_processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
