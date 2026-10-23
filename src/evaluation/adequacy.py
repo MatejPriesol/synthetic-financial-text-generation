@@ -162,38 +162,15 @@ def evaluate_blueprint_adherence(data):
 
     return {"triplet_blueprint_adherence": score}
 
-def evaluate_surface_form_copying(data):
+def evaluate_ontology_compliance(data, allowed_ontology, extended_ontology_template, template=False):
     """
-    Measures literal relation string copying within generated sentences.
-    """
-    copied_count = 0
-    total = 0
-
-    for sample in data:
-        for triplet in sample.triplets:
-            total += 1
-            # Check if the exact relation string is in the sentence
-            if getattr(triplet, 'relation', '').lower() in getattr(sample, 'sentence', '').lower():
-                copied_count += 1
-
-    # Calculate the float score
-    score = round((copied_count / total) * 100, 2) if total > 0 else 0
-
-    return {
-        "copying_percentage": score,
-        "total_relations_checked": total,
-        "total_copied_literally": copied_count
-    }
-
-def evaluate_schema_compliance(data, allowed_ontology, allowed_schemas_template, template=False):
-    """
-    Evaluates compliance with allowed ontological schemas and identifies hallucinated relations.
+    Evaluates compliance with allowed ontological facts and identifies hallucinated relations.
     """
     total_triplets = 0
     compliant_count = 0
     hallucination_counts = {}
 
-    ontology = allowed_schemas_template if template else allowed_ontology
+    ontology = extended_ontology_template if template else allowed_ontology
 
     for sample in data:
         for t in sample.triplets:
@@ -240,7 +217,7 @@ def get_type_of_data(data):
     return is_template, is_entity
 
 
-def run_all_adequacy(data, allowed_schemas, allowed_schemas_template, verbose=False):
+def run_all_adequacy(data, allowed_ontology, extended_ontology_template, verbose=False):
     results = {}
 
     is_template, is_entity = get_type_of_data(data)
@@ -252,8 +229,7 @@ def run_all_adequacy(data, allowed_schemas, allowed_schemas_template, verbose=Fa
         results["entity_adherence"] = evaluate_entity_adherence(data, verbose=verbose)
 
     results["blueprint_adherence"] = evaluate_blueprint_adherence(data)
-    results["surface_form_copying"] = evaluate_surface_form_copying(data)
-    results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas, allowed_schemas_template, is_template)
+    results["ontology_compliance"] = evaluate_ontology_compliance(data, allowed_ontology, extended_ontology_template, is_template)
 
     return results
 
@@ -266,13 +242,13 @@ def main():
     # Specific eval flags
     parser.add_argument("--template-adherence", action="store_true", help="Run only template adherence")
     parser.add_argument("--entity-adherence", action="store_true", help="Run only entity adherence")
-    parser.add_argument("--surface-form", action="store_true", help="Run surface form copying eval")
-    parser.add_argument("--schema-compliance", action="store_true", help="Run only schema compliance")
+    parser.add_argument("--ontology-compliance", action="store_true", help="Run only ontology compliance")
     parser.add_argument("--blueprint-adherence", action="store_true", help="Run only triplet blueprint adherence")
 
     args = parser.parse_args()
 
-    if "03_synthetic" not in Path(args.data).parts:
+    path_parts = Path(args.data).parts
+    if "03_synthetic" not in path_parts and "05_archive" not in path_parts:
         print(
             "\n[INFO] Non-synthetic dataset detected. Skipping Adequacy evaluation as it requires prompt constraints.")
         return
@@ -281,17 +257,16 @@ def main():
 
     allowed_ontology_path = "data/03_synthetic/allowed_schemas_cutoff_2.0%.json"
     with open(allowed_ontology_path, "r", encoding="utf-8") as f:
-        allowed_schemas = json.load(f)
+        allowed_ontology = json.load(f)
 
-    template_schema_path = "data/03_synthetic/allowed_schemas_template.json"
-    with open(template_schema_path, "r", encoding="utf-8") as f:
-        allowed_schemas_template = json.load(f)
+    template_ontology_path = "data/03_synthetic/allowed_schemas_template.json"
+    with open(template_ontology_path, "r", encoding="utf-8") as f:
+        extended_ontology_template = json.load(f)
 
     specific_flags = [
         args.template_adherence,
         args.entity_adherence,
-        args.surface_form,
-        args.schema_compliance,
+        args.ontology_compliance,
         args.blueprint_adherence
     ]
 
@@ -306,17 +281,15 @@ def main():
             local_results["template_adherence"] = evaluate_template_adherence(data, verbose=args.verbose)
         if args.entity_adherence and is_entity:
             local_results["entity_adherence"] = evaluate_entity_adherence(data, verbose=args.verbose)
-        if args.surface_form:
-            local_results["surface_form_copying"] = evaluate_surface_form_copying(data)
-        if args.schema_compliance:
-            local_results["schema_compliance"] = evaluate_schema_compliance(data, allowed_schemas, allowed_schemas_template, is_template)
+        if args.ontology_compliance:
+            local_results["ontology_compliance"] = evaluate_ontology_compliance(data, allowed_ontology, extended_ontology_template, is_template)
         if args.blueprint_adherence:
             local_results["blueprint_adherence"] = evaluate_blueprint_adherence(data)
 
     # If all specific flags are False, default to running everything
     else:
         print("No specific flags detected. Running all adequacy evaluations by default...\n")
-        local_results = run_all_adequacy(data, allowed_schemas, allowed_schemas_template, verbose=args.verbose)
+        local_results = run_all_adequacy(data, allowed_ontology, extended_ontology_template, verbose=args.verbose)
 
     print("\n=== LOCAL RUN RESULTS ===")
     print(json.dumps(local_results, indent=2))

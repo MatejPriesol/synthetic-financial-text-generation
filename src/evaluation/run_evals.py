@@ -111,7 +111,8 @@ def main():
 
         final_results["Diversity"] = run_all_diversity(sentences, args.verbose)
 
-    if (args.all or args.adequacy) and "03_synthetic" in Path(args.data).parts:
+    path_parts = Path(args.data).parts
+    if (args.all or args.adequacy) and ("03_synthetic" in path_parts or "05_archive" in path_parts):
         if args.verbose:
             print("\n\n=== Running Adequacy Evals ===\n")
         else:

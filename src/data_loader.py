@@ -258,7 +258,7 @@ EVALUATION DATA LOADER
 def load_data_for_eval(data_path: str):
     path = Path(data_path)
 
-    if "03_synthetic" or "05_archive" in path.parts:
+    if "03_synthetic" in path.parts or "05_archive" in path.parts:
         data = load_synthetic_fire_data(path)
     elif "rebel" in path.name:    # Assume I want the sample as it takes too long otherwise
         data = load_rebel_sample(path)
