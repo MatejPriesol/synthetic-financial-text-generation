@@ -75,7 +75,7 @@ def evaluate_grammatical_correctness(sentences, verbose=False):
 
 
 def run_all_grammar(sentences, verbose=False):
-    return {"grammar": evaluate_grammatical_correctness(sentences, verbose=verbose)}
+    return {"metrics": evaluate_grammatical_correctness(sentences, verbose=verbose)}
 
 
 def main():

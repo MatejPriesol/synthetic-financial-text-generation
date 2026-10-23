@@ -391,7 +391,7 @@ def main():
     cutoff = args.cutoff if args.cutoff is not None else 2.0
     allowed_ontology, schema_weights = build_system_prompt_schema(data, include_types=True, percentage_cutoff=cutoff)
 
-    schema_path = output_dir / f"allowed_schemas_cutoff_{cutoff}%.json"
+    schema_path = output_dir / f"allowed_ontology.json"
     with open(schema_path, "w", encoding="utf-8") as f:
         json.dump(allowed_ontology, f, indent=4)
 
@@ -419,7 +419,7 @@ def main():
 
     templates_by_length = build_template_sets_from_data(data)
 
-    template_json_path = output_dir / "allowed_schemas_template.json"
+    template_json_path = output_dir / "extended_ontology_template.json"
 
     # Extract and save them
     save_template_schemas(templates_by_length, template_json_path)

@@ -54,20 +54,20 @@ def main():
     data, sentences = load_data_for_eval(args.data)
     print(f"Loaded {len(sentences)} sentences.\n")
 
-    schema_path = "data/03_synthetic/allowed_schemas_cutoff_2.0%.json"
-    with open(schema_path, "r", encoding="utf-8") as f:
-        allowed_schemas = json.load(f)
+    allowed_ontology_path = "data/03_synthetic/allowed_ontology.json"
+    with open(allowed_ontology_path, "r", encoding="utf-8") as f:
+        allowed_ontology = json.load(f)
 
-    template_schema_path = "data/03_synthetic/allowed_schemas_template.json"
-    with open(template_schema_path, "r", encoding="utf-8") as f:
-        allowed_schemas_template = json.load(f)
+    template_ontology_path = "data/03_synthetic/extended_ontology_template.json"
+    with open(template_ontology_path, "r", encoding="utf-8") as f:
+        extended_ontology_template = json.load(f)
 
     is_template, is_entity = get_type_of_data(data)
 
-    schemas_to_save = allowed_schemas_template if is_template else allowed_schemas
+    ontology_to_save = extended_ontology_template if is_template else allowed_ontology
 
     if "02_processed" in Path(args.data).parts:
-        schemas_to_save = []
+        ontology_to_save = []
 
     if args.verbose:
         print(f"Verbose flag enabled, detailed evaluation results will be printed.\n")
@@ -77,12 +77,12 @@ def main():
 
     final_results = {
         "Overview": {
-            "general": {
+            "metadata": {
                 "run_name": args.run_name,
                 "dataset_size": len(sentences),
                 "device_used": device.upper(),
                 "dataset_path": args.data,
-                "allowed_schemas": schemas_to_save
+                "allowed_triplet_types": ontology_to_save
             }
         }
     }
@@ -118,7 +118,7 @@ def main():
         else:
             print("Running Adequacy Evals...")
 
-        final_results["Adequacy"] = run_all_adequacy(data, allowed_schemas, allowed_schemas_template, args.verbose)
+        final_results["Adequacy"] = run_all_adequacy(data, allowed_ontology, extended_ontology_template, args.verbose)
 
 
     print("\n" + "=" * 50)

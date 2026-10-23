@@ -255,11 +255,11 @@ def main():
 
     data, sentences = load_data_for_eval(args.data)
 
-    allowed_ontology_path = "data/03_synthetic/allowed_schemas_cutoff_2.0%.json"
+    allowed_ontology_path = "data/03_synthetic/allowed_ontology.json"
     with open(allowed_ontology_path, "r", encoding="utf-8") as f:
         allowed_ontology = json.load(f)
 
-    template_ontology_path = "data/03_synthetic/allowed_schemas_template.json"
+    template_ontology_path = "data/03_synthetic/extended_ontology_template.json"
     with open(template_ontology_path, "r", encoding="utf-8") as f:
         extended_ontology_template = json.load(f)
 

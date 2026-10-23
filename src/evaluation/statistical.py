@@ -108,8 +108,8 @@ def evaluate_entities(synthetic_data, top_n=10, verbose=False, alias_mode=None):
     return {
         "top_unified_entities": format_with_pct(unified_counts, total_entities),
         "top_entity_types": format_with_pct(type_counts, total_types),
-        "top_subjects_breakdown": format_with_pct(subject_counts, total_subjects),
-        "top_objects_breakdown": format_with_pct(object_counts, total_objects)
+        "top_subjects": format_with_pct(subject_counts, total_subjects),
+        "top_objects": format_with_pct(object_counts, total_objects)
     }
 
 def profile_ontology(data, include_types=False, top_n=10, verbose=False):

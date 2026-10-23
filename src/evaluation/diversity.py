@@ -169,7 +169,7 @@ def evaluate_semantic_similarity(sentences, threshold=0.9, verbose=False):
     median_closest = max_scores.median().item()
 
     return {
-        "all_pairs_similarity": {
+        "pairwise_similarity": {
             "avg_pairwise_sim": round(avg_score, 3),
             f"percentage_above_{threshold}": round(100 * iterated / len(sorted_scores_list), 5),
         },
