@@ -14,5 +14,8 @@ env/
 # Data
 data/
 
+# Old output files
+output_archive
+
 # Security
 .env
