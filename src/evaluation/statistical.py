@@ -160,7 +160,7 @@ def profile_ontology(data, include_types=False, top_n=10, verbose=False):
         "top_relations": format_with_pct(relation_counts, total_relations)
     }
 
-def evaluate_triplet_density(data, save_plot_path=None, verbose=False):
+def evaluate_triplet_density(data, save_plot_path=None, plot_title=None, verbose=False):
     """
     Calculates summary statistics and empirical distribution of triplet counts per sentence.
     """
@@ -200,7 +200,9 @@ def evaluate_triplet_density(data, save_plot_path=None, verbose=False):
         plt.figure(figsize=(10, 5))
         sns.histplot(triplet_counts, discrete=True, shrink=0.8, color="darkorange")
 
-        plt.title("Distribution of Triplets per Sentence", fontsize=14, pad=15)
+        title_str = plot_title if plot_title else "Distribution of Triplets per Sentence"
+
+        plt.title(title_str, fontsize=14, pad=15)
         plt.xlabel("Number of Triplets", fontsize=12)
         plt.ylabel("Frequency", fontsize=12)
         plt.xticks(range(min_triplets, max_triplets + 1))
@@ -233,11 +235,18 @@ def run_all_statistical(data, save_name=None, verbose=False, alias_mode=None):
     results = {"entities": evaluate_entities(synthetic_data=data, top_n=10, verbose=verbose, alias_mode=alias_mode),
                "ontology": profile_ontology(data, include_types=has_types_helper(data), verbose=verbose)}
 
-    plot_filepath = f"output/diversity_plots/{save_name}_triplet_density.png" if save_name else None
+    if save_name:
+        plot_title = f"{save_name.title()} - Triplet Density"
+        clean_filename = save_name.replace(" ", "_")
+        plot_filepath = f"output/triplet_density/{clean_filename}_triplet_density.png"
+    else:
+        plot_filepath = None
+        plot_title = None
 
     results["triplet_density"] = evaluate_triplet_density(
         data,
         save_plot_path=plot_filepath,
+        plot_title=plot_title,
         verbose=verbose
     )
 

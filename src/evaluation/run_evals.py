@@ -64,9 +64,14 @@ def main():
 
     is_template, is_entity = get_type_of_data(data)
 
+    # Define path conditions
+    path_parts = Path(args.data).parts
+    is_reference = "02_processed" in path_parts or "final_fire" in path_parts
+    is_synthetic = "03_synthetic" in path_parts or ("05_archive" in path_parts and "final_fire" not in path_parts)
+
     ontology_to_save = extended_ontology_template if is_template else allowed_ontology
 
-    if "02_processed" in Path(args.data).parts:
+    if is_reference:
         ontology_to_save = []
 
     if args.verbose:
@@ -101,7 +106,8 @@ def main():
         else:
             print("Running Statistical Evals...")
 
-        final_results["Statistical"] = run_all_statistical(data, args.save, args.verbose)
+        plot_name = args.run_name if args.save else None
+        final_results["Statistical"] = run_all_statistical(data, plot_name, args.verbose)
 
     if args.all or args.diversity:
         if args.verbose:
@@ -111,8 +117,7 @@ def main():
 
         final_results["Diversity"] = run_all_diversity(sentences, args.verbose)
 
-    path_parts = Path(args.data).parts
-    if (args.all or args.adequacy) and ("03_synthetic" in path_parts or "05_archive" in path_parts):
+    if (args.all or args.adequacy) and is_synthetic:
         if args.verbose:
             print("\n\n=== Running Adequacy Evals ===\n")
         else:

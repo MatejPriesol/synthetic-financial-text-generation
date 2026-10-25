@@ -258,7 +258,10 @@ EVALUATION DATA LOADER
 def load_data_for_eval(data_path: str):
     path = Path(data_path)
 
-    if "03_synthetic" in path.parts or "05_archive" in path.parts:
+    # It is synthetic if it's in 03_synthetic, OR in 05_archive but NOT the fire baseline
+    is_synthetic = "03_synthetic" in path.parts or ("05_archive" in path.parts and "final_fire" not in path.parts)
+
+    if is_synthetic:
         data = load_synthetic_fire_data(path)
     elif "rebel" in path.name:    # Assume I want the sample as it takes too long otherwise
         data = load_rebel_sample(path)

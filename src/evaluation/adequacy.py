@@ -248,7 +248,8 @@ def main():
     args = parser.parse_args()
 
     path_parts = Path(args.data).parts
-    if "03_synthetic" not in path_parts and "05_archive" not in path_parts:
+    is_synthetic = "03_synthetic" in path_parts or ("05_archive" in path_parts and "final_fire" not in path_parts)
+    if not is_synthetic:
         print(
             "\n[INFO] Non-synthetic dataset detected. Skipping Adequacy evaluation as it requires prompt constraints.")
         return
