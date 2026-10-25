@@ -1,0 +1,473 @@
+{
+    "Overview": {
+        "metadata": {
+            "run_name": "Few-shot 2000 Qwen",
+            "dataset_size": 2000,
+            "device_used": "CUDA",
+            "dataset_path": "data/05_archive/final_qwen/processed/few_shot_2k.json",
+            "allowed_triplet_types": [
+                "[FinancialEntity] --(Propertyof)--> [Company]",
+                "[FinancialEntity] --(Value)--> [Money]",
+                "[Company] --(Sector)--> [Sector]",
+                "[Action] --(Actionto)--> [Company]",
+                "[Company] --(ActionBuy)--> [Company]",
+                "[FinancialEntity] --(Constituentof)--> [FinancialEntity]",
+                "[Company] --(Subsidiaryof)--> [Company]",
+                "[Person] --(Employeeof)--> [Company]",
+                "[Person] --(Designation)--> [Designation]",
+                "[Action] --(Actionin)--> [Date]",
+                "[Company] --(Designation)--> [Designation]",
+                "[Product] --(Productof)--> [Company]",
+                "[Quantity] --(Valuein)--> [Date]",
+                "[Money] --(Valuein)--> [Date]",
+                "[FinancialEntity] --(Quantity)--> [Quantity]",
+                "[FinancialEntity] --(ValueChangeIncreaseby)--> [Money]"
+            ]
+        }
+    },
+    "Grammar": {
+        "metrics": {
+            "avg_score": 0.963,
+            "median_score": 0.97
+        }
+    },
+    "Statistical": {
+        "entities": {
+            "top_unified_entities": {
+                "ceo": {
+                    "count": 130,
+                    "percentage": 1.41
+                },
+                "revenue": {
+                    "count": 110,
+                    "percentage": 1.19
+                },
+                "john doe": {
+                    "count": 101,
+                    "percentage": 1.09
+                },
+                "$50 million": {
+                    "count": 91,
+                    "percentage": 0.99
+                },
+                "net income": {
+                    "count": 89,
+                    "percentage": 0.96
+                },
+                "s&p 500 index": {
+                    "count": 87,
+                    "percentage": 0.94
+                },
+                "tesla": {
+                    "count": 87,
+                    "percentage": 0.94
+                },
+                "amazon": {
+                    "count": 85,
+                    "percentage": 0.92
+                },
+                "apple inc.": {
+                    "count": 83,
+                    "percentage": 0.9
+                },
+                "stock price": {
+                    "count": 79,
+                    "percentage": 0.86
+                }
+            },
+            "top_entity_types": {
+                "Company": {
+                    "count": 2654,
+                    "percentage": 28.75
+                },
+                "FinancialEntity": {
+                    "count": 1678,
+                    "percentage": 18.18
+                },
+                "Money": {
+                    "count": 1401,
+                    "percentage": 15.18
+                },
+                "Date": {
+                    "count": 922,
+                    "percentage": 9.99
+                },
+                "Action": {
+                    "count": 674,
+                    "percentage": 7.3
+                },
+                "Person": {
+                    "count": 623,
+                    "percentage": 6.75
+                },
+                "Sector": {
+                    "count": 427,
+                    "percentage": 4.63
+                },
+                "Designation": {
+                    "count": 348,
+                    "percentage": 3.77
+                },
+                "Product": {
+                    "count": 297,
+                    "percentage": 3.22
+                },
+                "Quantity": {
+                    "count": 206,
+                    "percentage": 2.23
+                }
+            },
+            "top_subjects": {
+                "john doe": {
+                    "count": 97,
+                    "percentage": 2.1
+                },
+                "revenue": {
+                    "count": 97,
+                    "percentage": 2.1
+                },
+                "net income": {
+                    "count": 76,
+                    "percentage": 1.65
+                },
+                "s&p 500 index": {
+                    "count": 75,
+                    "percentage": 1.63
+                },
+                "stock price": {
+                    "count": 69,
+                    "percentage": 1.5
+                },
+                "acquisition": {
+                    "count": 53,
+                    "percentage": 1.15
+                },
+                "market capitalization": {
+                    "count": 52,
+                    "percentage": 1.13
+                },
+                "jane smith": {
+                    "count": 41,
+                    "percentage": 0.89
+                },
+                "apple inc.": {
+                    "count": 39,
+                    "percentage": 0.85
+                },
+                "$50 million": {
+                    "count": 39,
+                    "percentage": 0.85
+                }
+            },
+            "top_objects": {
+                "ceo": {
+                    "count": 104,
+                    "percentage": 2.25
+                },
+                "tesla": {
+                    "count": 54,
+                    "percentage": 1.17
+                },
+                "amazon": {
+                    "count": 53,
+                    "percentage": 1.15
+                },
+                "$50 million": {
+                    "count": 52,
+                    "percentage": 1.13
+                },
+                "chief financial officer": {
+                    "count": 45,
+                    "percentage": 0.98
+                },
+                "technology": {
+                    "count": 45,
+                    "percentage": 0.98
+                },
+                "microsoft": {
+                    "count": 44,
+                    "percentage": 0.95
+                },
+                "apple inc.": {
+                    "count": 44,
+                    "percentage": 0.95
+                },
+                "johnson & johnson": {
+                    "count": 37,
+                    "percentage": 0.8
+                },
+                "ibm": {
+                    "count": 36,
+                    "percentage": 0.78
+                }
+            }
+        },
+        "ontology": {
+            "total_triplets_extracted": 4615,
+            "unique_schemas_used": 140,
+            "unique_relations_used": 16,
+            "top_schemas": {
+                "[Money] --(Valuein)--> [Date]": {
+                    "count": 393,
+                    "percentage": 8.52
+                },
+                "[FinancialEntity] --(ValueChangeIncreaseby)--> [Money]": {
+                    "count": 387,
+                    "percentage": 8.39
+                },
+                "[Company] --(Sector)--> [Sector]": {
+                    "count": 376,
+                    "percentage": 8.15
+                },
+                "[FinancialEntity] --(Value)--> [Money]": {
+                    "count": 362,
+                    "percentage": 7.84
+                },
+                "[Person] --(Employeeof)--> [Company]": {
+                    "count": 329,
+                    "percentage": 7.13
+                },
+                "[Product] --(Productof)--> [Company]": {
+                    "count": 248,
+                    "percentage": 5.37
+                },
+                "[Company] --(ActionBuy)--> [Company]": {
+                    "count": 240,
+                    "percentage": 5.2
+                },
+                "[FinancialEntity] --(Propertyof)--> [Company]": {
+                    "count": 239,
+                    "percentage": 5.18
+                },
+                "[Person] --(Designation)--> [Designation]": {
+                    "count": 237,
+                    "percentage": 5.14
+                },
+                "[Action] --(Actionin)--> [Date]": {
+                    "count": 237,
+                    "percentage": 5.14
+                }
+            },
+            "top_relations": {
+                "Valuein": {
+                    "count": 519,
+                    "percentage": 11.25
+                },
+                "ValueChangeIncreaseby": {
+                    "count": 508,
+                    "percentage": 11.01
+                },
+                "Value": {
+                    "count": 477,
+                    "percentage": 10.34
+                },
+                "Actionto": {
+                    "count": 418,
+                    "percentage": 9.06
+                },
+                "Sector": {
+                    "count": 411,
+                    "percentage": 8.91
+                },
+                "Actionin": {
+                    "count": 377,
+                    "percentage": 8.17
+                },
+                "Employeeof": {
+                    "count": 337,
+                    "percentage": 7.3
+                },
+                "Designation": {
+                    "count": 332,
+                    "percentage": 7.19
+                },
+                "Propertyof": {
+                    "count": 331,
+                    "percentage": 7.17
+                },
+                "Productof": {
+                    "count": 257,
+                    "percentage": 5.57
+                }
+            }
+        },
+        "triplet_density": {
+            "average_triplets": 2.31,
+            "max_triplets": 5,
+            "raw_counts": {
+                "1": 625,
+                "2": 640,
+                "3": 363,
+                "4": 239,
+                "5": 133
+            },
+            "percentages": {
+                "1_triplets": 31.25,
+                "2_triplets": 32.0,
+                "3_triplets": 18.15,
+                "4_triplets": 11.95,
+                "5_triplets": 6.65
+            }
+        }
+    },
+    "Diversity": {
+        "pairwise_similarity": {
+            "avg_pairwise_sim": 0.222,
+            "percentage_above_0.9": 0.0089
+        },
+        "closest_match_similarity": {
+            "avg_closest_match": 0.76,
+            "median_closest_match": 0.761,
+            "duplicates_percentage": 1.05,
+            "very_similar_percentage": 21.5,
+            "different_percentage": 77.45
+        },
+        "ngrams": {
+            "total_3grams": 36972,
+            "unique_3grams": 18200,
+            "3gram_uniqueness_ratio": 49.23
+        },
+        "self_bleu": {
+            "self_bleu_2": 0.894,
+            "self_bleu_3": 0.7852,
+            "self_bleu_4": 0.6559
+        }
+    },
+    "Adequacy": {
+        "blueprint_adherence": {
+            "triplet_blueprint_adherence": 91.75
+        },
+        "ontology_compliance": {
+            "compliance_percentage": 79.31,
+            "total_triplets_checked": 4615,
+            "total_compliant": 3660,
+            "total_hallucinated": 955,
+            "hallucination_frequencies": {
+                "[Date] --(Actionin)--> [Action]": 103,
+                "[Company] --(Actionto)--> [Company]": 69,
+                "[Money] --(Value)--> [FinancialEntity]": 69,
+                "[Company] --(Actionto)--> [Action]": 63,
+                "[Company] --(Propertyof)--> [FinancialEntity]": 63,
+                "[Money] --(ValueChangeIncreaseby)--> [FinancialEntity]": 44,
+                "[FinancialEntity] --(Valuein)--> [Date]": 33,
+                "[Designation] --(Designation)--> [Person]": 29,
+                "[Company] --(Actionto)--> [FinancialEntity]": 29,
+                "[Money] --(ValueChangeIncreaseby)--> [Money]": 22,
+                "[FinancialEntity] --(ValueChangeIncreaseby)--> [Quantity]": 21,
+                "[Date] --(Actionin)--> [Date]": 21,
+                "[Date] --(Valuein)--> [Money]": 20,
+                "[FinancialEntity] --(Constituentof)--> [Company]": 18,
+                "[Sector] --(Sector)--> [Company]": 15,
+                "[Action] --(Actionto)--> [FinancialEntity]": 14,
+                "[Designation] --(Designation)--> [Company]": 14,
+                "[Company] --(Constituentof)--> [FinancialEntity]": 14,
+                "[Money] --(ValueChangeIncreaseby)--> [Date]": 13,
+                "[Company] --(Value)--> [Money]": 13,
+                "[Designation] --(Designation)--> [Designation]": 13,
+                "[Quantity] --(Quantity)--> [FinancialEntity]": 12,
+                "[FinancialEntity] --(Value)--> [Quantity]": 9,
+                "[Action] --(Actionto)--> [Product]": 9,
+                "[Action] --(Actionto)--> [Person]": 8,
+                "[Sector] --(Sector)--> [Sector]": 7,
+                "[Company] --(Productof)--> [Product]": 7,
+                "[Date] --(Valuein)--> [FinancialEntity]": 6,
+                "[Action] --(Value)--> [Money]": 6,
+                "[Quantity] --(ValueChangeIncreaseby)--> [Money]": 6,
+                "[FinancialEntity] --(Actionto)--> [Action]": 5,
+                "[Company] --(Employeeof)--> [Person]": 5,
+                "[Company] --(ValueChangeIncreaseby)--> [Money]": 5,
+                "[Quantity] --(Value)--> [Money]": 5,
+                "[Quantity] --(ValueChangeIncreaseby)--> [FinancialEntity]": 5,
+                "[Company] --(Actionto)--> [Product]": 4,
+                "[Company] --(Actionin)--> [Date]": 4,
+                "[Money] --(Propertyof)--> [Company]": 4,
+                "[Quantity] --(Value)--> [FinancialEntity]": 4,
+                "[FinancialEntity] --(Constituentof)--> [Quantity]": 4,
+                "[Date] --(Valuein)--> [Date]": 4,
+                "[Action] --(Actionin)--> [Money]": 4,
+                "[FinancialEntity] --(Propertyof)--> [FinancialEntity]": 4,
+                "[Product] --(Sector)--> [Sector]": 4,
+                "[Money] --(Value)--> [Money]": 3,
+                "[Person] --(Designation)--> [Company]": 3,
+                "[Action] --(Actionto)--> [Sector]": 3,
+                "[Sector] --(Sector)--> [Product]": 3,
+                "[FinancialEntity] --(Propertyof)--> [Person]": 3,
+                "[Company] --(Actionto)--> [Person]": 3,
+                "[Product] --(Constituentof)--> [Company]": 3,
+                "[Person] --(Actionto)--> [Company]": 3,
+                "[Company] --(Propertyof)--> [Product]": 3,
+                "[Money] --(Value)--> [Action]": 3,
+                "[Product] --(Constituentof)--> [FinancialEntity]": 3,
+                "[Company] --(Actionto)--> [Sector]": 3,
+                "[Money] --(Valuein)--> [FinancialEntity]": 3,
+                "[Action] --(Actionin)--> [Company]": 2,
+                "[FinancialEntity] --(Propertyof)--> [Product]": 2,
+                "[Action] --(Actionin)--> [Action]": 2,
+                "[Designation] --(Employeeof)--> [Company]": 2,
+                "[FinancialEntity] --(Constituentof)--> [Product]": 2,
+                "[Date] --(Valuein)--> [Quantity]": 2,
+                "[Quantity] --(Quantity)--> [Quantity]": 2,
+                "[Money] --(Quantity)--> [Quantity]": 2,
+                "[Action] --(ValueChangeIncreaseby)--> [Money]": 2,
+                "[Money] --(Value)--> [Company]": 2,
+                "[Company] --(Constituentof)--> [Company]": 2,
+                "[Sector] --(Sector)--> [FinancialEntity]": 2,
+                "[Company] --(ActionBuy)--> [FinancialEntity]": 2,
+                "[FinancialEntity] --(Sector)--> [Sector]": 2,
+                "[FinancialEntity] --(Actionto)--> [Company]": 2,
+                "[Action] --(Actionto)--> [Action]": 2,
+                "[Action] --(Propertyof)--> [Company]": 2,
+                "[Money] --(Valuein)--> [Action]": 2,
+                "[Company] --(Propertyof)--> [Company]": 1,
+                "[Product] --(Actionto)--> [Action]": 1,
+                "[FinancialEntity] --(Propertyof)--> [Money]": 1,
+                "[Company] --(ValueChangeIncreaseby)--> [Quantity]": 1,
+                "[FinancialEntity] --(Propertyof)--> [Quantity]": 1,
+                "[Designation] --(Actionin)--> [Action]": 1,
+                "[Company] --(ActionBuy)--> [Product]": 1,
+                "[FinancialEntity] --(Propertyof)--> [Action]": 1,
+                "[Date] --(Valuein)--> [Action]": 1,
+                "[Company] --(Parentcompanyof)--> [Company]": 1,
+                "[Action] --(Actionto)--> [Quantity]": 1,
+                "[Date] --(Actionin)--> [Money]": 1,
+                "[FinancialEntity] --(Propertyof)--> [Designation]": 1,
+                "[Designation] --(Designationof)--> [Company]": 1,
+                "[Product] --(Actionto)--> [Company]": 1,
+                "[Company] --(Designation)--> [Sector]": 1,
+                "[Company] --(Propertyof)--> [Money]": 1,
+                "[Company] --(Valuein)--> [Date]": 1,
+                "[Product] --(Productof)--> [Product]": 1,
+                "[Company] --(Subsidiaryof)--> [FinancialEntity]": 1,
+                "[Product] --(Propertyof)--> [Company]": 1,
+                "[Designation] --(Subsidiaryof)--> [Company]": 1,
+                "[Action] --(Actionin)--> [Product]": 1,
+                "[Action] --(Actionto)--> [Money]": 1,
+                "[Product] --(Sector)--> [Company]": 1,
+                "[Sector] --(Actionto)--> [Action]": 1,
+                "[Date] --(Valuein)--> [Sector]": 1,
+                "[Company] --(Designation)--> [Company]": 1,
+                "[Money] --(Propertyof)--> [FinancialEntity]": 1,
+                "[Action] --(Actionto)--> [Designation]": 1,
+                "[FinancialEntity] --(Constituentof)--> [Sector]": 1,
+                "[Company] --(Designation)--> [Action]": 1,
+                "[Quantity] --(Constituentof)--> [FinancialEntity]": 1,
+                "[Person] --(Employeeof)--> [Designation]": 1,
+                "[Company] --(Actionto)--> [Designation]": 1,
+                "[Sector] --(Sector)--> [Person]": 1,
+                "[Quantity] --(ValueChangeIncreaseby)--> [Quantity]": 1,
+                "[Company] --(Actionto)--> [Money]": 1,
+                "[Date] --(Propertyof)--> [Company]": 1,
+                "[Company] --(Actionto)--> [Quantity]": 1,
+                "[Action] --(Constituentof)--> [FinancialEntity]": 1,
+                "[Quantity] --(Propertyof)--> [Company]": 1,
+                "[Date] --(Quantity)--> [FinancialEntity]": 1,
+                "[Date] --(Actionin)--> [Company]": 1,
+                "[Date] --(Valuein)--> [Person]": 1,
+                "[FinancialEntity] --(Productof)--> [Company]": 1,
+                "[Quantity] --(ValueChangeIncreaseby)--> [Date]": 1,
+                "[Product] --(Value)--> [FinancialEntity]": 1,
+                "[Quantity] --(Propertyof)--> [FinancialEntity]": 1
+            }
+        }
+    }
+}

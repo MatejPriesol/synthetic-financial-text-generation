@@ -1,0 +1,18 @@
+[
+    "[FinancialEntity] --(Propertyof)--> [Company]",
+    "[FinancialEntity] --(Value)--> [Money]",
+    "[Company] --(Sector)--> [Sector]",
+    "[Action] --(Actionto)--> [Company]",
+    "[Company] --(ActionBuy)--> [Company]",
+    "[FinancialEntity] --(Constituentof)--> [FinancialEntity]",
+    "[Company] --(Subsidiaryof)--> [Company]",
+    "[Person] --(Employeeof)--> [Company]",
+    "[Person] --(Designation)--> [Designation]",
+    "[Action] --(Actionin)--> [Date]",
+    "[Company] --(Designation)--> [Designation]",
+    "[Product] --(Productof)--> [Company]",
+    "[Quantity] --(Valuein)--> [Date]",
+    "[Money] --(Valuein)--> [Date]",
+    "[FinancialEntity] --(Quantity)--> [Quantity]",
+    "[FinancialEntity] --(ValueChangeIncreaseby)--> [Money]"
+]

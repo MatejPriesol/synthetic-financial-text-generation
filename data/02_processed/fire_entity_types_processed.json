@@ -1,0 +1,15 @@
+[
+    "Action",
+    "BusinessUnit",
+    "Company",
+    "Date",
+    "Designation",
+    "FinancialEntity",
+    "GeopoliticalEntity",
+    "Location",
+    "Money",
+    "Person",
+    "Product",
+    "Quantity",
+    "Sector"
+]

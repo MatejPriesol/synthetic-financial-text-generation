@@ -1,0 +1,319 @@
+{
+    "Overview": {
+        "metadata": {
+            "run_name": "FIRE Dataset",
+            "dataset_size": 2000,
+            "device_used": "CUDA",
+            "dataset_path": "data/05_archive/final_fire/fire_2k_sample.json",
+            "allowed_triplet_types": []
+        }
+    },
+    "Grammar": {
+        "metrics": {
+            "avg_score": 0.868,
+            "median_score": 0.928
+        }
+    },
+    "Statistical": {
+        "entities": {
+            "top_unified_entities": {
+                "acquired": {
+                    "count": 220,
+                    "percentage": 2.31
+                },
+                "acquisition": {
+                    "count": 165,
+                    "percentage": 1.73
+                },
+                "2012": {
+                    "count": 60,
+                    "percentage": 0.63
+                },
+                "sale": {
+                    "count": 54,
+                    "percentage": 0.57
+                },
+                "director": {
+                    "count": 54,
+                    "percentage": 0.57
+                },
+                "shares": {
+                    "count": 52,
+                    "percentage": 0.54
+                },
+                "2011": {
+                    "count": 51,
+                    "percentage": 0.53
+                },
+                "sold": {
+                    "count": 41,
+                    "percentage": 0.43
+                },
+                "shares of common stock": {
+                    "count": 40,
+                    "percentage": 0.42
+                },
+                "chief executive officer": {
+                    "count": 39,
+                    "percentage": 0.41
+                }
+            },
+            "top_entity_types": {
+                "Company": {
+                    "count": 2571,
+                    "percentage": 26.94
+                },
+                "FinancialEntity": {
+                    "count": 1478,
+                    "percentage": 15.49
+                },
+                "Action": {
+                    "count": 817,
+                    "percentage": 8.56
+                },
+                "Money": {
+                    "count": 756,
+                    "percentage": 7.92
+                },
+                "Person": {
+                    "count": 738,
+                    "percentage": 7.73
+                },
+                "Date": {
+                    "count": 704,
+                    "percentage": 7.38
+                },
+                "Designation": {
+                    "count": 546,
+                    "percentage": 5.72
+                },
+                "Quantity": {
+                    "count": 520,
+                    "percentage": 5.45
+                },
+                "Product": {
+                    "count": 351,
+                    "percentage": 3.68
+                },
+                "Location": {
+                    "count": 348,
+                    "percentage": 3.65
+                }
+            },
+            "top_subjects": {
+                "acquired": {
+                    "count": 220,
+                    "percentage": 4.61
+                },
+                "acquisition": {
+                    "count": 165,
+                    "percentage": 3.46
+                },
+                "sale": {
+                    "count": 53,
+                    "percentage": 1.11
+                },
+                "sold": {
+                    "count": 41,
+                    "percentage": 0.86
+                },
+                "shares": {
+                    "count": 39,
+                    "percentage": 0.82
+                },
+                "revenue": {
+                    "count": 38,
+                    "percentage": 0.8
+                },
+                "shares of common stock": {
+                    "count": 38,
+                    "percentage": 0.8
+                },
+                "sales": {
+                    "count": 34,
+                    "percentage": 0.71
+                },
+                "purchase": {
+                    "count": 32,
+                    "percentage": 0.67
+                },
+                "merger": {
+                    "count": 29,
+                    "percentage": 0.61
+                }
+            },
+            "top_objects": {
+                "2012": {
+                    "count": 60,
+                    "percentage": 1.26
+                },
+                "director": {
+                    "count": 54,
+                    "percentage": 1.13
+                },
+                "2011": {
+                    "count": 51,
+                    "percentage": 1.07
+                },
+                "chief executive officer": {
+                    "count": 39,
+                    "percentage": 0.82
+                },
+                "december 31 , 2012": {
+                    "count": 35,
+                    "percentage": 0.73
+                },
+                "president": {
+                    "count": 35,
+                    "percentage": 0.73
+                },
+                "public accounting": {
+                    "count": 31,
+                    "percentage": 0.65
+                },
+                "executive vice president": {
+                    "count": 22,
+                    "percentage": 0.46
+                },
+                "chief financial officer": {
+                    "count": 19,
+                    "percentage": 0.4
+                },
+                "senior vice president": {
+                    "count": 17,
+                    "percentage": 0.36
+                }
+            }
+        },
+        "ontology": {
+            "total_triplets_extracted": 4772,
+            "unique_schemas_used": 50,
+            "unique_relations_used": 18,
+            "top_schemas": {
+                "[Person] --(Designation)--> [Designation]": {
+                    "count": 447,
+                    "percentage": 9.37
+                },
+                "[Action] --(Actionto)--> [Company]": {
+                    "count": 353,
+                    "percentage": 7.4
+                },
+                "[Action] --(Actionin)--> [Date]": {
+                    "count": 350,
+                    "percentage": 7.33
+                },
+                "[Product] --(Productof)--> [Company]": {
+                    "count": 307,
+                    "percentage": 6.43
+                },
+                "[Company] --(Sector)--> [Sector]": {
+                    "count": 292,
+                    "percentage": 6.12
+                },
+                "[FinancialEntity] --(Value)--> [Money]": {
+                    "count": 261,
+                    "percentage": 5.47
+                },
+                "[Person] --(Employeeof)--> [Company]": {
+                    "count": 240,
+                    "percentage": 5.03
+                },
+                "[Money] --(Valuein)--> [Date]": {
+                    "count": 223,
+                    "percentage": 4.67
+                },
+                "[Company] --(Subsidiaryof)--> [Company]": {
+                    "count": 181,
+                    "percentage": 3.79
+                },
+                "[FinancialEntity] --(Propertyof)--> [Company]": {
+                    "count": 172,
+                    "percentage": 3.6
+                }
+            },
+            "top_relations": {
+                "Designation": {
+                    "count": 546,
+                    "percentage": 11.44
+                },
+                "Actionto": {
+                    "count": 467,
+                    "percentage": 9.79
+                },
+                "Valuein": {
+                    "count": 354,
+                    "percentage": 7.42
+                },
+                "Actionin": {
+                    "count": 350,
+                    "percentage": 7.33
+                },
+                "Value": {
+                    "count": 349,
+                    "percentage": 7.31
+                },
+                "Productof": {
+                    "count": 307,
+                    "percentage": 6.43
+                },
+                "Locatedin": {
+                    "count": 297,
+                    "percentage": 6.22
+                },
+                "Sector": {
+                    "count": 292,
+                    "percentage": 6.12
+                },
+                "Propertyof": {
+                    "count": 270,
+                    "percentage": 5.66
+                },
+                "Employeeof": {
+                    "count": 265,
+                    "percentage": 5.55
+                }
+            }
+        },
+        "triplet_density": {
+            "average_triplets": 2.39,
+            "max_triplets": 5,
+            "raw_counts": {
+                "1": 615,
+                "2": 567,
+                "3": 395,
+                "4": 277,
+                "5": 146
+            },
+            "percentages": {
+                "1_triplets": 30.75,
+                "2_triplets": 28.35,
+                "3_triplets": 19.75,
+                "4_triplets": 13.85,
+                "5_triplets": 7.3
+            }
+        }
+    },
+    "Diversity": {
+        "pairwise_similarity": {
+            "avg_pairwise_sim": 0.145,
+            "percentage_above_0.9": 0.00115
+        },
+        "closest_match_similarity": {
+            "avg_closest_match": 0.564,
+            "median_closest_match": 0.54,
+            "duplicates_percentage": 0.75,
+            "very_similar_percentage": 2.25,
+            "different_percentage": 97.0
+        },
+        "ngrams": {
+            "total_3grams": 50241,
+            "unique_3grams": 39458,
+            "3gram_uniqueness_ratio": 78.54
+        },
+        "self_bleu": {
+            "self_bleu_2": 0.677,
+            "self_bleu_3": 0.4695,
+            "self_bleu_4": 0.3159
+        }
+    }
+}

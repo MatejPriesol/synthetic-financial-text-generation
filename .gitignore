@@ -11,11 +11,47 @@ env/
 # Jupyter Notebooks
 .ipynb_checkpoints/
 
-# Data
-data/
-
 # Old output files
 output_archive
 
 # Security
 .env
+
+### Data Directories
+# Ignore everything in the data folder by default
+data/*
+
+# Un-ignore the specific sub-directories
+!data/01_raw/
+!data/02_processed/
+!data/03_synthetic/
+!data/04_reports/
+!data/05_archive/
+
+# 01_raw: Include FIRE files
+data/01_raw/*
+!data/01_raw/fire_dev.json
+!data/01_raw/fire_test.json
+!data/01_raw/fire_train.json
+!data/01_raw/fire_types.json
+
+# 02_processed: Include processed FIRE files
+data/02_processed/*
+!data/02_processed/fire_all_processed.json
+!data/02_processed/fire_entity_types_processed.json
+!data/02_processed/fire_relation_types_processed.json
+
+# 03_synthetic: Include ontology files
+data/03_synthetic/*
+!data/03_synthetic/allowed_ontology.json
+!data/03_synthetic/extended_ontology_template.json
+
+# 04_reports: Empty folder for running experiments
+data/04_reports/*
+!data/04_reports/.gitkeep
+
+# 05_archive: Include final files from the thesis report
+data/05_archive/*
+!data/05_archive/final_fire/
+!data/05_archive/final_llama/
+!data/05_archive/final_qwen/
