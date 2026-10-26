@@ -33,11 +33,14 @@ A core focus of this repository is its comprehensive Evaluation Framework, which
 ```text
 MasterThesis/
 ├── data/                               # Datasets and evaluation reports
-│   ├── 02_processed/                   # Baseline FIRE dataset (extracted relations)
-│   ├── 03_synthetic/                   # Generated datasets across 4 strategies
-│   └── 04_reports/                     # JSON evaluation reports for each run 
+│   ├── 01_raw/                         # Raw FIRE dataset and types
+│   ├── 02_processed/                   # Processed real-world FIRE reference data
+│   ├── 03_synthetic/                   # Generated datasets and ontology constraints
+│   ├── 04_reports/                     # JSON evaluation reports
+│   └── 05_archive/                     # Final thesis datasets (final_fire, final_llama, final_qwen)
 ├── notebooks/                          # Jupyter notebooks for data visualization and results plotting
-├── scripts/                            # Utility scripts (data pruning, baseline extraction, length analysis)
+├── output/                             # Evaluation plots and dataset comparisons for thesis defense
+├── scripts/                            # Utility scripts (data pruning, reference extraction, length analysis)
 ├── src/                                # Core Python package
 │   ├── data_loader.py                  # Data parsing and loading utilities
 │   ├── synthetic_data_generation.py    # Main LLM generation engine
@@ -79,7 +82,7 @@ pip install -r requirements.txt
 *(Note: You can use the `--help` flag on any script below to see the full list of available command-line arguments and parameters.)*
 
 ### 1. Data Preparation
-Both the raw and processed baseline datasets are already provided in this repository under `data/01_raw/` and `data/02_processed/`. You can proceed directly to data generation or evaluation. 
+Both the raw and processed reference datasets are already provided in this repository under `data/01_raw/` and `data/02_processed/`. You can proceed directly to data generation or evaluation. 
 
 If you make changes to the data loader and wish to re-process the raw datasets from scratch, simply run:
 ```bash
@@ -106,7 +109,7 @@ python -m src.synthetic_data_generation --strategy template --provider local --o
 *Generated datasets are saved to `data/03_synthetic/`.*
 
 ### 3. Dataset Pruning
-To ensure a strictly fair 1:1 comparison across all evaluation metrics, all datasets (both the real-world baseline and the synthetic outputs) must be normalized to the exact same size. This script randomly samples exactly 2,000 entries using a fixed seed (`42`) for deterministic reproducibility.
+To ensure a strictly fair 1:1 comparison across all evaluation metrics, all datasets (both the real-world reference and the synthetic outputs) must be normalized to the exact same size. This script randomly samples exactly 2,000 entries using a fixed seed (`42`) for deterministic reproducibility.
 
 **Usage:**
 ```bash
@@ -117,7 +120,7 @@ python -m scripts.prune_dataset --input <generated_file.json> --output <pruned_f
 - `--input`: Path to the raw generated JSON dataset.
 - `--output`: Path to save the pruned JSON dataset.
 - `--target_size`: (Optional) Target size, defaults to 2000.
-- `--fire`: (Optional) Used specifically when preparing the real-world FIRE baseline dataset. It filters out sentences outside the 1-5 triplet range to match the bounds requested during synthetic generation. 
+- `--fire`: (Optional) Used only for preparing the real-world FIRE reference dataset. It filters out sentences outside the 1-5 triplet range to match the bounds requested during synthetic generation. 
 
 **Example:**
 ```bash
@@ -154,7 +157,7 @@ python -m src.evaluation.run_evals --data data/03_synthetic/template_qwen.json -
 ### 1. Adequacy (`adequacy.py`)
 Measures the LLM's ability to follow instructions and strict prompt constraints without hallucinating relations.
 
-- **Global Adequacy**: Evaluates Schema Compliance (does every generated triplet exist in the allowed financial ontology?) and Blueprint Adherence (did the model generate the exact number of facts requested?).
+- **Global Adequacy**: Evaluates Ontology Compliance (does every generated triplet exist in the allowed financial ontology?) and Blueprint Adherence (did the model generate the exact number of facts requested?).
 - **Targeted Adherence**: Evaluates precision and recall specifically for the Entity and Template strategies to verify if the LLM actually utilized the exact entities or relation structures passed in the prompt.
 
 ### 2. Diversity (`diversity.py`)
