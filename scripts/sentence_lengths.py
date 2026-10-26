@@ -23,9 +23,9 @@ BAR_ALPHA = 0.8
 EDGE_COLOR = 'black'
 
 # Paths
-fire_raw_path = Path("data/02_processed/fire_sample.json")
-llama_raw_dir = Path("data/05_archive/final_llama_temp17/2000_processed")
-qwen_raw_dir = Path("data/05_archive/final_qwen_temp17/2000_processed")
+fire_raw_path = Path("data/05_archive/final_fire/fire_2k_sample.json")
+llama_raw_dir = Path("data/05_archive/final_llama/processed")
+qwen_raw_dir = Path("data/05_archive/final_qwen/processed")
 
 strategies_raw = ["zero_shot", "few_shot", "entity", "template"]
 strategy_labels = ["Zero-shot", "Few-shot", "Entity", "Template"]
@@ -72,8 +72,8 @@ bars2 = ax.bar(x + width / 2, qwen_means, width, yerr=qwen_stds,
                label='Qwen 2.5', color=QWEN_COLOR, alpha=BAR_ALPHA,
                edgecolor=EDGE_COLOR, ecolor=EDGE_COLOR, capsize=4)
 
-# Plot FIRE Baseline (Mean line + Std Dev shading)
-ax.axhline(fire_mean, color=FIRE_COLOR, linestyle='--', linewidth=2.5, label='FIRE Baseline')
+# Plot FIRE Reference (Mean line + Std Dev shading)
+ax.axhline(fire_mean, color=FIRE_COLOR, linestyle='--', linewidth=2.5, label='FIRE Reference')
 ax.fill_between([-0.5, len(strategy_labels) - 0.5],
                 fire_mean - fire_std, fire_mean + fire_std,
                 color=FIRE_COLOR, alpha=0.15)

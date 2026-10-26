@@ -11,7 +11,8 @@ env/
 # Jupyter Notebooks
 .ipynb_checkpoints/
 
-# Old output files
+# Old notebook and output files
+notebooks_archive
 output_archive
 
 # Security
