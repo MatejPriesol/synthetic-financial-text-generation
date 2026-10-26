@@ -1,7 +1,7 @@
 {
     "Overview": {
         "metadata": {
-            "run_name": "Entity 2000 Qwen",
+            "run_name": "Qwen Entity",
             "dataset_size": 2000,
             "device_used": "CUDA",
             "dataset_path": "data/05_archive/final_qwen/processed/entity_2k.json",

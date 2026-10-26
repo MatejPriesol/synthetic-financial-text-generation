@@ -1,7 +1,7 @@
 {
     "Overview": {
         "metadata": {
-            "run_name": "Few-shot 2000 Llama",
+            "run_name": "Llama Few-shot",
             "dataset_size": 2000,
             "device_used": "CUDA",
             "dataset_path": "data/05_archive/final_llama/processed/few_shot_2k.json",

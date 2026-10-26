@@ -1,7 +1,7 @@
 {
     "Overview": {
         "metadata": {
-            "run_name": "Zero-shot 2000 Llama",
+            "run_name": "Llama Zero-shot",
             "dataset_size": 2000,
             "device_used": "CUDA",
             "dataset_path": "data/05_archive/final_llama/processed/zero_shot_2k.json",

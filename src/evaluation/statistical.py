@@ -194,18 +194,41 @@ def evaluate_triplet_density(data, save_plot_path=None, plot_title=None, verbose
 
     # Generate and save the plot
     if save_plot_path:
-        # Ensure the output directory exists
         os.makedirs(os.path.dirname(save_plot_path), exist_ok=True)
 
-        plt.figure(figsize=(10, 5))
-        sns.histplot(triplet_counts, discrete=True, shrink=0.8, color="darkorange")
+        # Apply thesis styling globally for this plot
+        sns.set_theme(style="whitegrid")
+        plt.rcParams.update({
+            'font.size': 14,
+            'axes.labelsize': 16,
+            'axes.titlesize': 18,
+            'xtick.labelsize': 14,
+            'ytick.labelsize': 14
+        })
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Color selection to match thesis style
+        bar_color = "#7f8c8d"  # Default FIRE Grey
+        if plot_title:
+            title_lower = plot_title.lower()
+            if "llama" in title_lower:
+                bar_color = "#4c72b0"  # Llama Blue
+            elif "qwen" in title_lower:
+                bar_color = "#c44e52"  # Qwen Red
+
+        sns.histplot(triplet_counts, discrete=True, shrink=0.8, color=bar_color, alpha=0.8, edgecolor="black",
+                     ax=ax)
 
         title_str = plot_title if plot_title else "Distribution of Triplets per Sentence"
 
-        plt.title(title_str, fontsize=14, pad=15)
-        plt.xlabel("Number of Triplets", fontsize=12)
-        plt.ylabel("Frequency", fontsize=12)
-        plt.xticks(range(min_triplets, max_triplets + 1))
+        ax.set_title(title_str, pad=15)
+        ax.set_xlabel("Number of Triplets")
+        ax.set_ylabel("Frequency")
+        ax.set_xticks(range(min_triplets, max_triplets + 1))
+
+        sns.despine()
+        plt.tight_layout()
 
         # Save the plot and close it to free up memory
         plt.savefig(save_plot_path, bbox_inches='tight', dpi=300)
